@@ -1,0 +1,3 @@
+# Write a comment by starting the line with a '#'
+[*.{fs,fsx,fsi}]
+fsharp_multiline_bracket_style = experimental_stroustrup
