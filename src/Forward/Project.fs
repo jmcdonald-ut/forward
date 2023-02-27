@@ -160,11 +160,20 @@ let switch (commandContext: CommandContext) (switchArgs: SwitchArgs) =
     | ReadOnly, true -> replaceInternalSymLink ()
     | ReadOnly, false -> Error(sprintf "Cannot switch to `%s`; it does not exist" switchArgs.Name)
 
-type RemoveArgs = { name: string }
+type RemoveArgs = { Name: string }
 
-let remove (removeArgs: RemoveArgs) =
-    // TODO
-    Error "Not implemented"
+/// Removes the dotenv file from the project.
+let remove (commandContext: CommandContext) (removeArgs: RemoveArgs) =
+    let fullPath: string = FileHelpers.dotenvPath commandContext removeArgs.Name
+    let exists: bool = FileHelpers.fileOrDirectoryExists fullPath
+    let isCurrent = FileHelpers.isCurrentEnvByPath commandContext fullPath
+
+    match (exists, isCurrent) with
+    | (_, true) -> Error(sprintf "Cannot remove `%s` since it is the current dotenv." removeArgs.Name)
+    | (false, _) -> Error(sprintf "Unable to find dotenv `%s` in the current project" removeArgs.Name)
+    | (true, _) ->
+        System.IO.File.Delete fullPath
+        Ok fullPath
 
 type MoveArgs = { name: string; nextName: string }
 

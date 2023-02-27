@@ -80,6 +80,27 @@ let handleInitCommand (commandContext: Forward.Project.CommandContext) =
         Ok handleSuccess)
 
 // SUBCOMMAND
+//   fwd rm
+// ****************************************************************************
+
+type RemoveArgs =
+    | [<MainCommand; ExactlyOnce>] Name of string
+
+    interface IArgParserTemplate with
+        member arg.Usage =
+            match arg with
+            | Name _ -> "dotenv name"
+
+let handleRemoveCommand (commandContext: Forward.Project.CommandContext) (removeArgs: ParseResults<RemoveArgs>) =
+    let name: string = removeArgs.GetResult Name
+    let args: Forward.Project.RemoveArgs = { Name = name }
+    let handleRemoveCommandSuccess _ = name |> printfn "OK rm → %s" |> ignore
+
+    args
+    |> Forward.Project.remove commandContext
+    |> bindResultAsUnitFunc handleRemoveCommandSuccess
+
+// SUBCOMMAND
 //   fwd switch
 // ****************************************************************************
 
@@ -116,6 +137,7 @@ let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switch
 type RootArgs =
     | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
     | [<CliPrefix(CliPrefix.None)>] List of ParseResults<ListArgs>
+    | [<CliPrefix(CliPrefix.None); CustomCommandLine("rm")>] Remove of ParseResults<RemoveArgs>
     | [<CliPrefix(CliPrefix.None)>] Switch of ParseResults<SwitchArgs>
     | [<CliPrefix(CliPrefix.DoubleDash)>] Project of string
     | [<CliPrefix(CliPrefix.DoubleDash)>] Root of string
@@ -124,10 +146,12 @@ type RootArgs =
         member arg.Usage =
             match arg with
             | Init _ -> "initialize a project."
-            | List _ -> "list project environments."
+            | List _ -> "list project dotenv files."
+            | Remove _ -> "remove project dotenv file."
+            | Switch _ -> "switch the project's dotenv file."
+            // Shared/Root CLI Args
             | Project _ -> "specify the project name."
             | Root _ -> "specify the path to `fwd` artifacts."
-            | Switch _ -> "switch the project's environment."
 
 /// Parses command line arguments into a structure that's easier to map into the
 /// business logic.
@@ -148,8 +172,9 @@ let parseCommandLine (argv: string[]) =
 let routeCommand (results: ParseResults<RootArgs>) (context: Forward.Project.CommandContext) =
     match results.TryGetSubCommand() with
     | Some(Init) -> handleInitCommand context
-    | Some(List(args: ParseResults<ListArgs>)) -> handleListCommand context args
-    | Some(Switch(args: ParseResults<SwitchArgs>)) -> handleSwitchCommand context args
+    | Some(List(args)) -> handleListCommand context args
+    | Some(Switch(args)) -> handleSwitchCommand context args
+    | Some(Remove(args)) -> handleRemoveCommand context args
     | Some _ -> Error(sprintf "Got invalid subcommand %O" (results.GetAllResults()))
     | None -> Error(sprintf "Got none with %O" (results.GetAllResults()))
 
