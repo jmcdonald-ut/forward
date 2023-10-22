@@ -153,6 +153,13 @@ type RootArgs =
             | Project _ -> "specify the project name."
             | Root _ -> "specify the path to `fwd` artifacts."
 
+let checkStructure =
+#if DEBUG
+    true
+#else
+    false
+#endif
+
 /// Parses command line arguments into a structure that's easier to map into the
 /// business logic.
 let parseCommandLine (argv: string[]) =
@@ -165,7 +172,7 @@ let parseCommandLine (argv: string[]) =
         )
 
     ArgumentParser
-        .Create<RootArgs>(programName = "fwd", errorHandler = errorHandler)
+        .Create<RootArgs>(programName = "fwd", errorHandler = errorHandler, checkStructure = checkStructure)
         .ParseCommandLine(argv)
 
 /// Match a parsed command to its handler function.
