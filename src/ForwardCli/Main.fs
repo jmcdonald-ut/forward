@@ -16,6 +16,7 @@ type SortDir = Forward.Project.ListDirection
 type SortCol =
     | [<CustomCommandLine("name")>] Name
     | [<CustomCommandLine("created-at")>] CreatedAt
+    | [<CustomCommandLine("accessed-at")>] AccessedAt
     | [<CustomCommandLine("updated-at")>] UpdatedAt
 
 type ListArgs =
@@ -33,6 +34,7 @@ let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs
         match listArgs.GetResult(SortColumn, defaultValue = Name) with
         | CreatedAt -> "created-at"
         | UpdatedAt -> "updated-at"
+        | AccessedAt -> "accessed-at"
         | _ -> "name"
 
     let sortDir: string =
@@ -54,10 +56,12 @@ let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs
             let label: string = rowLabel item
             let createdAt: string = asFormattedDateTime item.CreationTime
             let updatedAt: string = asFormattedDateTime item.LastWriteTime
-            table.AddRow(indicator, label, createdAt, updatedAt)
+            let accessedAt: string = asFormattedDateTime item.LastAccessTime
+            table.AddRow(indicator, label, createdAt, updatedAt, accessedAt)
 
         let initTable: Table =
-            (new Table()).AddColumns([| " "; "Environment"; "Created"; "Last Updated" |])
+            (new Table())
+                .AddColumns([| " "; "Environment"; "Created"; "Last Updated"; "Last Accessed" |])
 
         listResult |> (List.fold addRow initTable) |> AnsiConsole.Write
 

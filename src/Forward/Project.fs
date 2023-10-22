@@ -143,6 +143,7 @@ let switch (commandContext: CommandContext) (switchArgs: SwitchArgs) =
 
     let replaceInternalSymLink _ =
         System.IO.File.Delete(currentPath)
+        System.IO.File.SetLastAccessTimeUtc(targetPath, System.DateTime.UtcNow)
 
         FileHelpers.createSymbolicLinkIfMissing currentPath targetPath
         |> Result.bind (fun fileInfo -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
