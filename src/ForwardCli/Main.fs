@@ -136,9 +136,9 @@ let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switch
 [<RequireSubcommand>]
 type RootArgs =
     | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
-    | [<CliPrefix(CliPrefix.None)>] List of ParseResults<ListArgs>
+    | [<CliPrefix(CliPrefix.None); AltCommandLine("ls")>] List of ParseResults<ListArgs>
     | [<CliPrefix(CliPrefix.None); CustomCommandLine("rm")>] Remove of ParseResults<RemoveArgs>
-    | [<CliPrefix(CliPrefix.None)>] Switch of ParseResults<SwitchArgs>
+    | [<CliPrefix(CliPrefix.None); AltCommandLine("s")>] Switch of ParseResults<SwitchArgs>
     | [<CliPrefix(CliPrefix.DoubleDash)>] Project of string
     | [<CliPrefix(CliPrefix.DoubleDash)>] Root of string
 
