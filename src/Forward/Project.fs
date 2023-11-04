@@ -185,6 +185,36 @@ let remove (commandContext: CommandContext) (removeArgs: RemoveArgs) =
         System.IO.File.Delete fullPath
         Ok fullPath
 
+type ExplainOutput = {
+    RootPath: string
+    ProjectName: string
+    ProjectPath: string
+    DotEnvSymLinkPath: option<string>
+    DotEnvPath: option<string>
+}
+
+let explain (commandContext: CommandContext) =
+    let maybePathToSymLink = FileHelpers.projectPathTo commandContext [ ".env.current" ]
+
+    let pathToSymLink =
+        match System.IO.File.Exists maybePathToSymLink with
+        | true -> Some maybePathToSymLink
+        | false -> None
+
+    let actualPathToCurrentDotEnv =
+        match FileHelpers.actualPathToCurrentEnv commandContext with
+        | Ok path -> Some path.FullName
+        | Error _ -> None
+
+    Ok
+        {
+            RootPath = commandContext.RootPath
+            ProjectName = commandContext.ProjectName
+            ProjectPath = commandContext.ProjectPath
+            DotEnvSymLinkPath = pathToSymLink
+            DotEnvPath = actualPathToCurrentDotEnv
+        }
+
 type MoveArgs = { name: string; nextName: string }
 
 let move (moveArgs: MoveArgs) = Error "Not implemented"

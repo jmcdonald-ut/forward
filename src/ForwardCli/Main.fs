@@ -81,6 +81,18 @@ let handleInitCommand (commandContext: Forward.Project.CommandContext) =
         Ok handleSuccess)
 
 // SUBCOMMAND
+//   fwd explain
+// ****************************************************************************
+
+let handleExplainCommand (commandContext: Forward.Project.CommandContext) =
+    commandContext
+    |> Forward.Project.explain
+    |> Result.bind (fun (explainResult: Forward.Project.ExplainOutput) ->
+        let handleSuccess _ = explainResult |> printfn "%O" |> ignore
+
+        Ok handleSuccess)
+
+// SUBCOMMAND
 //   fwd rm
 // ****************************************************************************
 
@@ -137,6 +149,7 @@ let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switch
 [<RequireSubcommand>]
 type RootArgs =
     | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
+    | [<SubCommand; CliPrefix(CliPrefix.None)>] Explain
     | [<CliPrefix(CliPrefix.None); AltCommandLine("ls")>] List of ParseResults<ListArgs>
     | [<CliPrefix(CliPrefix.None); CustomCommandLine("rm")>] Remove of ParseResults<RemoveArgs>
     | [<CliPrefix(CliPrefix.None); AltCommandLine("s")>] Switch of ParseResults<SwitchArgs>
@@ -147,6 +160,7 @@ type RootArgs =
         member arg.Usage =
             match arg with
             | Init _ -> "initialize a project."
+            | Explain _ -> "explains the current context."
             | List _ -> "list project dotenv files."
             | Remove _ -> "remove project dotenv file."
             | Switch _ -> "switch the project's dotenv file."
@@ -180,6 +194,7 @@ let parseCommandLine (argv: string[]) =
 let routeCommand (results: ParseResults<RootArgs>) (context: Forward.Project.CommandContext) =
     match results.TryGetSubCommand() with
     | Some(Init) -> handleInitCommand context
+    | Some(Explain) -> handleExplainCommand context
     | Some(List(args)) -> handleListCommand context args
     | Some(Switch(args)) -> handleSwitchCommand context args
     | Some(Remove(args)) -> handleRemoveCommand context args
