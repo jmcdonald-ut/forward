@@ -15,9 +15,9 @@ type SortDir = Forward.Project.ListDirection
 
 type SortCol =
     | [<CustomCommandLine("name")>] Name
-    | [<CustomCommandLine("created-at")>] CreatedAt
-    | [<CustomCommandLine("accessed-at")>] AccessedAt
-    | [<CustomCommandLine("updated-at")>] UpdatedAt
+    | [<CustomCommandLine("accessed")>] Accessed
+    | [<CustomCommandLine("created")>] Created
+    | [<CustomCommandLine("updated")>] Updated
 
 type ListArgs =
     | [<CustomCommandLine("--sort-dir")>] SortDirection of SortDir
@@ -27,14 +27,14 @@ type ListArgs =
         member arg.Usage =
             match arg with
             | SortDirection _ -> "sort direction (asc|desc); defaults to asc"
-            | SortColumn _ -> "sort column (name|created-at|updated-at); defaults to name"
+            | SortColumn _ -> "sort column (name|created|accessed|updated); defaults to name"
 
 let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs: ParseResults<ListArgs>) =
     let sortCol: string =
         match listArgs.GetResult(SortColumn, defaultValue = Name) with
-        | CreatedAt -> "created-at"
-        | UpdatedAt -> "updated-at"
-        | AccessedAt -> "accessed-at"
+        | Accessed -> "accessed"
+        | Created -> "created"
+        | Updated -> "updated"
         | _ -> "name"
 
     let sortDir: string =
@@ -54,14 +54,11 @@ let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs
         let addRow (table: Table) (item: Forward.Project.ListEntry) =
             let indicator: string = if item.IsCurrent then "[green]»[/]" else ""
             let label: string = rowLabel item
-            let createdAt: string = asFormattedDateTime item.CreationTime
             let updatedAt: string = asFormattedDateTime item.LastWriteTime
-            let accessedAt: string = asFormattedDateTime item.LastAccessTime
-            table.AddRow(indicator, label, createdAt, updatedAt, accessedAt)
+            table.AddRow(indicator, label, updatedAt)
 
         let initTable: Table =
-            (new Table())
-                .AddColumns([| " "; "Environment"; "Created"; "Last Updated"; "Last Accessed" |])
+            (new Table()).AddColumns([| " "; "Environment"; "Last Updated" |])
 
         listResult |> (List.fold addRow initTable) |> AnsiConsole.Write
 

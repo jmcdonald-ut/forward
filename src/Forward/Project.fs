@@ -59,8 +59,9 @@ type ListDirection =
 
 type ListColumn =
     | Name
-    | CreatedAt
-    | UpdatedAt
+    | Created
+    | Updated
+    | Accessed
 
 type ListArgs = {
     Column: ListColumn
@@ -84,8 +85,9 @@ let buildListArgs (sortColString: string) (sortDirString: string) : ListArgs =
 
     let sortCol: ListColumn =
         match sortColString.ToLower() with
-        | "created-at" -> CreatedAt
-        | "updated-at" -> UpdatedAt
+        | "created" -> Created
+        | "updated" -> Updated
+        | "accessed" -> Accessed
         | _ -> Name
 
     {
@@ -100,8 +102,9 @@ let list (commandContext: CommandContext) (listParams: ListArgs) =
 
     let colFunc =
         match listParams.Column with
-        | CreatedAt -> (fun (l: ListEntry) (r: ListEntry) -> compare l.CreationTime r.CreationTime)
-        | UpdatedAt -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastWriteTime r.LastWriteTime)
+        | Created -> (fun (l: ListEntry) (r: ListEntry) -> compare l.CreationTime r.CreationTime)
+        | Updated -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastWriteTime r.LastWriteTime)
+        | Accessed -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastAccessTime r.LastAccessTime)
         | Name -> (fun (l: ListEntry) (r: ListEntry) -> compare l.Name r.Name)
 
     let compareFunc =
@@ -141,9 +144,15 @@ let switch (commandContext: CommandContext) (switchArgs: SwitchArgs) =
 
     let targetPath: string = FileHelpers.dotenvPath commandContext switchArgs.Name
 
+    let touchExisting _ =
+        match FileHelpers.actualPathToCurrentEnv commandContext with
+        | Ok path -> System.IO.File.SetLastWriteTimeUtc(path.FullName, System.DateTime.UtcNow)
+        | Error _ -> ()
+
     let replaceInternalSymLink _ =
+        touchExisting () |> ignore
         System.IO.File.Delete(currentPath)
-        System.IO.File.SetLastAccessTimeUtc(targetPath, System.DateTime.UtcNow)
+        System.IO.File.SetLastWriteTimeUtc(targetPath, System.DateTime.UtcNow)
 
         FileHelpers.createSymbolicLinkIfMissing currentPath targetPath
         |> Result.bind (fun fileInfo -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
