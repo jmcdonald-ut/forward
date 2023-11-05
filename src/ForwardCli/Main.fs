@@ -27,19 +27,19 @@ type ListArgs =
   interface IArgParserTemplate with
     member arg.Usage =
       match arg with
-      | SortDirection _ -> "sort direction (asc|desc); defaults to asc"
-      | SortColumn _ -> "sort column (name|created|accessed|updated); defaults to name"
+      | SortDirection _ -> "sort direction (asc|desc); defaults to desc"
+      | SortColumn _ -> "sort column (name|created|accessed|updated); defaults to updated"
 
 let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs: ParseResults<ListArgs>) =
   let sortCol: string =
-    match listArgs.GetResult(SortColumn, defaultValue = Name) with
+    match listArgs.GetResult(SortColumn, defaultValue = Updated) with
     | Accessed -> "accessed"
     | Created -> "created"
     | Updated -> "updated"
     | _ -> "name"
 
   let sortDir: string =
-    match listArgs.GetResult(SortDirection, defaultValue = SortDir.Asc) with
+    match listArgs.GetResult(SortDirection, defaultValue = SortDir.Desc) with
     | SortDir.Desc -> "desc"
     | SortDir.Asc -> "asc"
 
