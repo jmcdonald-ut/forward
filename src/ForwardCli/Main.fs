@@ -1,5 +1,6 @@
 ﻿open Argu
 open Spectre.Console
+open dotenv.net
 
 let private bindResultAsUnitFunc func result =
   let captureResultAndBuildFunc resultValue =
@@ -80,6 +81,59 @@ let handleInitCommand (commandContext: Forward.Project.CommandContext) =
 
     Ok handleSuccess)
 
+// This is used by both `fwd backup` and `fwd restore`.
+type DbArgs =
+  | [<CustomCommandLine("--db-name")>] DbName of string
+
+  interface IArgParserTemplate with
+    member arg.Usage =
+      match arg with
+      | DbName _ -> "database name to backup; falls back to DB_NAME in current .env file"
+
+let extractDbName (commandContext: Forward.FileHelpers.CommandFileContext) (args: ParseResults<DbArgs>) =
+  match args.TryGetResult(DbName) with
+  | Some(dbName) -> Ok(dbName)
+  | None ->
+    match Forward.FileHelpers.actualPathToCurrentEnv commandContext with
+    | Error(_) ->
+      match Forward.FileHelpers.getEnvironmentVariableOpt "DB_NAME" with
+      | Some(dbName) -> Ok(dbName)
+      | None -> Error("Unable to resolve a DB name (no --db-name and no DB_NAME)")
+    | Ok(path) ->
+      let envVars: System.Collections.Generic.IDictionary<string, string> =
+        DotEnv.Read(new DotEnvOptions(envFilePaths = [ path.FullName ]))
+
+      match envVars.ContainsKey "DB_NAME" with
+      | false ->
+        match Forward.FileHelpers.getEnvironmentVariableOpt "DB_NAME" with
+        | Some(dbName) -> Ok(dbName)
+        | None -> Error("Unable to resolve a DB name (no --db-name and no DB_NAME)")
+      | true -> Ok(envVars["DB_NAME"])
+
+// SUBCOMMAND
+//   fwd backup
+// ****************************************************************************
+
+let handleBackupCommand (commandContext: Forward.Project.CommandContext) (args: ParseResults<DbArgs>) =
+  args
+  |> extractDbName commandContext
+  |> Result.bind (Forward.MySqlHelpers.backupDb commandContext)
+  |> bindResultAsUnitFunc (fun (res: Forward.MySqlHelpers.BackupContext) ->
+    let handler _ = printfn "OK: %O" res |> ignore
+    Ok handler)
+
+// SUBCOMMAND
+//   fwd restore
+// ****************************************************************************
+
+let handleRestoreCommand (commandContext: Forward.Project.CommandContext) (args: ParseResults<DbArgs>) =
+  args
+  |> extractDbName commandContext
+  |> Result.bind (Forward.MySqlHelpers.restoreDb commandContext)
+  |> bindResultAsUnitFunc (fun (res: Forward.MySqlHelpers.BackupContext) ->
+    let handler _ = printfn "OK: %O" res |> ignore
+    Ok handler)
+
 // SUBCOMMAND
 //   fwd explain
 // ****************************************************************************
@@ -150,6 +204,8 @@ let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switch
 type RootArgs =
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Explain
+  | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup of ParseResults<DbArgs>
+  | [<SubCommand; CliPrefix(CliPrefix.None)>] Restore of ParseResults<DbArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("ls")>] List of ParseResults<ListArgs>
   | [<CliPrefix(CliPrefix.None); CustomCommandLine("rm")>] Remove of ParseResults<RemoveArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("s")>] Switch of ParseResults<SwitchArgs>
@@ -160,6 +216,8 @@ type RootArgs =
     member arg.Usage =
       match arg with
       | Init _ -> "initialize a project."
+      | Backup _ -> "backs up a DB."
+      | Restore _ -> "restores a DB backup."
       | Explain _ -> "explains the current context."
       | List _ -> "list project dotenv files."
       | Remove _ -> "remove project dotenv file."
@@ -195,6 +253,8 @@ let routeCommand (results: ParseResults<RootArgs>) (context: Forward.Project.Com
   match results.TryGetSubCommand() with
   | Some(Init) -> handleInitCommand context
   | Some(Explain) -> handleExplainCommand context
+  | Some(Backup(args)) -> handleBackupCommand context args
+  | Some(Restore(args)) -> handleRestoreCommand context args
   | Some(List(args)) -> handleListCommand context args
   | Some(Switch(args)) -> handleSwitchCommand context args
   | Some(Remove(args)) -> handleRemoveCommand context args
