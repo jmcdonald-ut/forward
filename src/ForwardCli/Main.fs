@@ -179,7 +179,7 @@ type SwitchArgs =
     member arg.Usage =
       match arg with
       | Name _ -> "environment name."
-      | Create _ -> "create a new environment using <name>."
+      | Create -> "create a new environment using <name>."
 
 let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switchArgs: ParseResults<SwitchArgs>) =
   let normalizedSwitchArgs: Forward.Project.SwitchArgs = {
@@ -215,10 +215,10 @@ type RootArgs =
   interface IArgParserTemplate with
     member arg.Usage =
       match arg with
-      | Init _ -> "initialize a project."
+      | Init -> "initialize a project."
       | Backup _ -> "backs up a DB."
       | Restore _ -> "restores a DB backup."
-      | Explain _ -> "explains the current context."
+      | Explain -> "explains the current context."
       | List _ -> "list project dotenv files."
       | Remove _ -> "remove project dotenv file."
       | Switch _ -> "switch the project's dotenv file."
