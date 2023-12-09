@@ -4,6 +4,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Processes.fs" />
     <Compile Include="FileHelpers.fs" />
     <Compile Include="MySqlHelpers.fs" />
     <Compile Include="Project.fs" />

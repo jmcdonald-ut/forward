@@ -1,5 +1,6 @@
 module Forward.MySqlHelpers
 
+open Processes
 open System.Diagnostics
 
 // -- (Private) Context Utils
@@ -23,50 +24,32 @@ let private buildBackupContext (commandContext: FileHelpers.CommandFileContext) 
   let compressedName: string = sprintf "%s.tar.gz" backupName
   let workingDirectory: string = findOrCreateMysqlBackupsDirectory commandContext
 
-  {
-    BackupPath = System.IO.Path.Join(workingDirectory, backupName)
+  { BackupPath = System.IO.Path.Join(workingDirectory, backupName)
     BackupName = backupName
     CommandContext = Some commandContext
     CompressedBackupPath = System.IO.Path.Join(workingDirectory, compressedName)
     CompressedBackupName = compressedName
     DbName = dbName
-    WorkingDirectory = workingDirectory
-  }
+    WorkingDirectory = workingDirectory }
 
 // -- (Private) Command Utils
 
-let private buildStartInfo (executableName: string) (argumentString: string) =
-  let startInfo: ProcessStartInfo = new ProcessStartInfo()
-  startInfo.FileName <- executableName
-  startInfo.Arguments <- argumentString
-  startInfo
-
-let private commandFailedMessage (startInfo: ProcessStartInfo) (errorCode: int) =
-  sprintf "`%s %s` failed with ErrorCode=%i" startInfo.FileName startInfo.Arguments errorCode
-
-let private waitForCommand (activeProcess: Process) =
-  activeProcess.WaitForExit()
-
-  match activeProcess.ExitCode with
-  | 0 -> Ok(activeProcess)
-  | (errorCode: int) -> Error(commandFailedMessage activeProcess.StartInfo errorCode)
+type RunProcessArg =
+  { StartInfo: ProcessStartInfo
+    BeforeWait: (Process -> Process) option }
 
 // -- (Private) Mysql Backup Utils
 
 let private mysqlDumpIntoIo (backupContext: BackupContext) =
-  let startInfo: ProcessStartInfo = buildStartInfo "mysqldump" backupContext.DbName
-  startInfo.UseShellExecute <- false
-  startInfo.RedirectStandardOutput <- true
+  let executableProcess: ExecutableProcess =
+    ExecutableProcess.Build(
+      executableName = "mysqldump",
+      arguments = backupContext.DbName,
+      useShellExecute = false,
+      redirectStandardOutput = true
+    )
 
-  let activeProcess: Process = new Process()
-  activeProcess.StartInfo <- startInfo
-
-  match activeProcess.Start() with
-  | false -> Error("Unable to start `mysqldump`")
-  | true ->
-    let result: string = activeProcess.StandardOutput.ReadToEnd()
-
-    activeProcess |> waitForCommand |> Result.bind (fun _ -> Ok(result))
+  ExecutableProcess.ExecuteCapture(_.StandardOutput.ReadToEnd(), executableProcess)
 
 let private writeMysqlDumpOut (backupContext: BackupContext) (io: string) =
   do
@@ -77,18 +60,16 @@ let private writeMysqlDumpOut (backupContext: BackupContext) (io: string) =
   Ok(backupContext)
 
 let private compressMysqlDump (backupContext: BackupContext) =
-  let arg: string =
-    sprintf "-a -cf %s %s" backupContext.CompressedBackupName backupContext.BackupName
+  let executableProcess: ExecutableProcess =
+    ExecutableProcess.Build(
+      executableName = "tar",
+      arguments = sprintf "-a -cf %s %s" backupContext.CompressedBackupName backupContext.BackupName,
+      workingDirectory = backupContext.WorkingDirectory
+    )
 
-  let startInfo: ProcessStartInfo = buildStartInfo "tar" arg
-  startInfo.WorkingDirectory <- backupContext.WorkingDirectory
-
-  let activeProcess: Process = new Process()
-  activeProcess.StartInfo <- startInfo
-
-  match activeProcess.Start() with
-  | false -> Error("Unable to start `tar -czf <out> <in>`")
-  | true -> activeProcess |> waitForCommand |> Result.bind (fun _ -> Ok(backupContext))
+  executableProcess
+  |> ExecutableProcess.Execute
+  |> Result.bind (fun _ -> Ok(backupContext))
 
 let private removeIntermediateBackup (backupContext: BackupContext) =
   System.IO.File.Delete(backupContext.BackupPath)
@@ -97,32 +78,33 @@ let private removeIntermediateBackup (backupContext: BackupContext) =
 // -- (Private) DB Recovery Utils
 
 let private decompressBackup (backupContext: BackupContext) =
-  let startInfo: ProcessStartInfo = new ProcessStartInfo()
-  startInfo.FileName <- "tar"
-  startInfo.Arguments <- sprintf "-zxf %s" backupContext.CompressedBackupPath
-  startInfo.WorkingDirectory <- backupContext.WorkingDirectory
+  let executableProcess: ExecutableProcess =
+    ExecutableProcess.Build(
+      executableName = "tar",
+      arguments = sprintf "-zxf %s" backupContext.CompressedBackupPath,
+      workingDirectory = backupContext.WorkingDirectory
+    )
 
-  let activeProcess: Process = new Process()
-  activeProcess.StartInfo <- startInfo
-
-  match activeProcess.Start() with
-  | false -> Error(sprintf "Unable to start `%s %s" startInfo.FileName startInfo.Arguments)
-  | true -> activeProcess |> waitForCommand |> Result.bind (fun _ -> Ok(backupContext))
+  executableProcess
+  |> ExecutableProcess.Execute
+  |> Result.bind (fun _ -> Ok(backupContext))
 
 let private executeMysqlFromBackup (backupContext: BackupContext) =
-  let startInfo: ProcessStartInfo = buildStartInfo "mysql" backupContext.DbName
-  startInfo.WorkingDirectory <- backupContext.WorkingDirectory
-  startInfo.RedirectStandardInput <- true
+  let executableProcess: ExecutableProcess =
+    ExecutableProcess.Build(
+      executableName = "mysql",
+      arguments = backupContext.DbName,
+      workingDirectory = backupContext.WorkingDirectory,
+      redirectStandardInput = true
+    )
 
-  let activeProcess: Process = new Process()
-  activeProcess.StartInfo <- startInfo
-
-  match activeProcess.Start() with
-  | false -> Error(sprintf "Unable to start `%s %s`" startInfo.FileName startInfo.Arguments)
-  | true ->
+  let writeAndClose (activeProcess: Process) =
     activeProcess.StandardInput.Write(System.IO.File.ReadAllText(backupContext.BackupPath))
     activeProcess.StandardInput.Close()
-    activeProcess |> waitForCommand |> Result.bind (fun _ -> Ok(backupContext))
+
+  (writeAndClose, executableProcess)
+  |> ExecutableProcess.ExecuteTap
+  |> Result.bind (fun _ -> Ok(backupContext))
 
 // -- Public Interface
 
