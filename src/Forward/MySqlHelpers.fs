@@ -3,16 +3,14 @@ module Forward.MySqlHelpers
 open System.Diagnostics
 
 // -- (Private) Context Utils
-
-type BackupContext = {
-  BackupPath: string
-  BackupName: string
-  CommandContext: FileHelpers.CommandFileContext option
-  CompressedBackupPath: string
-  CompressedBackupName: string
-  DbName: string
-  WorkingDirectory: string
-}
+type BackupContext =
+  { BackupPath: string
+    BackupName: string
+    CommandContext: FileHelpers.CommandFileContext option
+    CompressedBackupPath: string
+    CompressedBackupName: string
+    DbName: string
+    WorkingDirectory: string }
 
 let private findOrCreateMysqlBackupsDirectory (commandContext: FileHelpers.CommandFileContext) =
   (commandContext.ProjectPath, "mysql_backups")

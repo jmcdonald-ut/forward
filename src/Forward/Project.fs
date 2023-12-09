@@ -61,19 +61,17 @@ type ListColumn =
   | Updated
   | Accessed
 
-type ListArgs = {
-  Column: ListColumn
-  Direction: ListDirection
-}
+type ListArgs =
+  { Column: ListColumn
+    Direction: ListDirection }
 
-type ListEntry = {
-  Name: string
-  FullName: string
-  IsCurrent: bool
-  CreationTime: System.DateTime
-  LastAccessTime: System.DateTime
-  LastWriteTime: System.DateTime
-}
+type ListEntry =
+  { Name: string
+    FullName: string
+    IsCurrent: bool
+    CreationTime: System.DateTime
+    LastAccessTime: System.DateTime
+    LastWriteTime: System.DateTime }
 
 let buildListArgs (sortColString: string) (sortDirString: string) : ListArgs =
   let sortDir: ListDirection =
@@ -88,10 +86,8 @@ let buildListArgs (sortColString: string) (sortDirString: string) : ListArgs =
     | "accessed" -> Accessed
     | _ -> Name
 
-  {
-    Column = sortCol
-    Direction = sortDir
-  }
+  { Column = sortCol
+    Direction = sortDir }
 
 /// Lists dotenv files for the forward operating base with support for sorting.
 /// The "current" dotenv is highlighted.
@@ -110,14 +106,13 @@ let list (commandContext: CommandContext) (listParams: ListArgs) =
     | Asc -> colFunc
     | Desc -> flip colFunc
 
-  let asDotenv (context: FileHelpers.CommandFileContext) (info: System.IO.FileSystemInfo) = {
-    ListEntry.Name = FileHelpers.asEnvName info.Name
-    ListEntry.FullName = info.FullName
-    ListEntry.IsCurrent = FileHelpers.isCurrentEnvByPath context info.FullName
-    ListEntry.CreationTime = info.CreationTime
-    ListEntry.LastAccessTime = info.LastAccessTime
-    ListEntry.LastWriteTime = info.LastWriteTime
-  }
+  let asDotenv (context: FileHelpers.CommandFileContext) (info: System.IO.FileSystemInfo) =
+    { ListEntry.Name = FileHelpers.asEnvName info.Name
+      ListEntry.FullName = info.FullName
+      ListEntry.IsCurrent = FileHelpers.isCurrentEnvByPath context info.FullName
+      ListEntry.CreationTime = info.CreationTime
+      ListEntry.LastAccessTime = info.LastAccessTime
+      ListEntry.LastWriteTime = info.LastWriteTime }
 
   try
     [ "dotenvs" ]
@@ -183,13 +178,12 @@ let remove (commandContext: CommandContext) (removeArgs: RemoveArgs) =
     System.IO.File.Delete fullPath
     Ok fullPath
 
-type ExplainOutput = {
-  RootPath: string
-  ProjectName: string
-  ProjectPath: string
-  DotEnvSymLinkPath: option<string>
-  DotEnvPath: option<string>
-}
+type ExplainOutput =
+  { RootPath: string
+    ProjectName: string
+    ProjectPath: string
+    DotEnvSymLinkPath: option<string>
+    DotEnvPath: option<string> }
 
 let explain (commandContext: CommandContext) =
   let maybePathToSymLink = FileHelpers.projectPathTo commandContext [ ".env.current" ]
@@ -205,13 +199,11 @@ let explain (commandContext: CommandContext) =
     | Error _ -> None
 
   Ok
-    {
-      RootPath = commandContext.RootPath
+    { RootPath = commandContext.RootPath
       ProjectName = commandContext.ProjectName
       ProjectPath = commandContext.ProjectPath
       DotEnvSymLinkPath = pathToSymLink
-      DotEnvPath = actualPathToCurrentDotEnv
-    }
+      DotEnvPath = actualPathToCurrentDotEnv }
 
 type MoveArgs = { name: string; nextName: string }
 

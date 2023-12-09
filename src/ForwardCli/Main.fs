@@ -182,13 +182,12 @@ type SwitchArgs =
       | Create -> "create a new environment using <name>."
 
 let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switchArgs: ParseResults<SwitchArgs>) =
-  let normalizedSwitchArgs: Forward.Project.SwitchArgs = {
-    Forward.Project.SwitchArgs.Name = switchArgs.GetResult(Name)
-    Forward.Project.SwitchArgs.Mode =
-      match switchArgs.Contains(Create) with
-      | true -> Forward.Project.SwitchMode.Create
-      | _ -> Forward.Project.SwitchMode.ReadOnly
-  }
+  let normalizedSwitchArgs: Forward.Project.SwitchArgs =
+    { Forward.Project.SwitchArgs.Name = switchArgs.GetResult(Name)
+      Forward.Project.SwitchArgs.Mode =
+        match switchArgs.Contains(Create) with
+        | true -> Forward.Project.SwitchMode.Create
+        | _ -> Forward.Project.SwitchMode.ReadOnly }
 
   let handleSuccess _ = printfn "SUCCESS"
 

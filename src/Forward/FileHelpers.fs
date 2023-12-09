@@ -52,11 +52,10 @@ let getProjectNameOpt (projectNameOpt: string option) =
   |> orMaybe (fun () -> currentDirectory () |> getFileName |> stringMaybe)
 
 /// The context for generating file paths.
-type CommandFileContext = {
-  RootPath: string
-  ProjectName: string
-  ProjectPath: string
-}
+type CommandFileContext =
+  { RootPath: string
+    ProjectName: string
+    ProjectPath: string }
 
 /// Build the file context of a command for the given arguments.
 let buildCommandContext (maybeRootPath: string option) (maybeProjectName: string option) =
@@ -66,11 +65,9 @@ let buildCommandContext (maybeRootPath: string option) (maybeProjectName: string
   match rootPathOpt, projectNameOpt with
   | (Some rootPath), (Some projectName) ->
     Ok
-      {
-        RootPath = rootPath
+      { RootPath = rootPath
         ProjectName = projectName
-        ProjectPath = System.IO.Path.Combine(rootPath, projectName)
-      }
+        ProjectPath = System.IO.Path.Combine(rootPath, projectName) }
   | None, None -> Error "Unable to determine root path and object name."
   | None, _ -> Error "Cannot determine a root path."
   | _, None -> Error "Cannot determine project name."
