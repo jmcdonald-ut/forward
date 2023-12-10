@@ -63,7 +63,8 @@ type ListColumn =
 
 type ListArgs =
   { Column: ListColumn
-    Direction: ListDirection }
+    Direction: ListDirection
+    Limit: int }
 
 type ListEntry =
   { Name: string
@@ -73,7 +74,7 @@ type ListEntry =
     LastAccessTime: System.DateTime
     LastWriteTime: System.DateTime }
 
-let buildListArgs (sortColString: string) (sortDirString: string) : ListArgs =
+let buildListArgs (limit: int) (sortColString: string) (sortDirString: string) : ListArgs =
   let sortDir: ListDirection =
     match sortDirString.ToLower() with
     | "desc" -> Desc
@@ -87,7 +88,8 @@ let buildListArgs (sortColString: string) (sortDirString: string) : ListArgs =
     | _ -> Name
 
   { Column = sortCol
-    Direction = sortDir }
+    Direction = sortDir
+    Limit = limit }
 
 /// Lists dotenv files for the forward operating base with support for sorting.
 /// The "current" dotenv is highlighted.
@@ -101,7 +103,7 @@ let list (commandContext: CommandContext) (listParams: ListArgs) =
     | Accessed -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastAccessTime r.LastAccessTime)
     | Name -> (fun (l: ListEntry) (r: ListEntry) -> compare l.Name r.Name)
 
-  let compareFunc =
+  let comparer =
     match listParams.Direction with
     | Asc -> colFunc
     | Desc -> flip colFunc
@@ -115,11 +117,21 @@ let list (commandContext: CommandContext) (listParams: ListArgs) =
       ListEntry.LastWriteTime = info.LastWriteTime }
 
   try
-    [ "dotenvs" ]
-    |> FileHelpers.projectPathTo commandContext
-    |> FileHelpers.getFileInfos
+    let fileList: System.IO.FileSystemInfo list =
+      [ "dotenvs" ]
+      |> FileHelpers.projectPathTo commandContext
+      |> FileHelpers.getFileInfos
+
+    let count: int =
+      match listParams.Limit with
+      | n when n > fileList.Length -> fileList.Length
+      | n when n < 0 -> 0
+      | n -> n
+
+    fileList
     |> List.map (asDotenv commandContext)
-    |> List.sortWith compareFunc
+    |> List.sortWith comparer
+    |> List.take count
     |> Ok
   with :? System.IO.DirectoryNotFoundException ->
     Error(sprintf "Project `%s` not found; run fwd init or provide a project name." commandContext.ProjectName)

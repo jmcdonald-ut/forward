@@ -23,14 +23,18 @@ type SortCol =
 type ListArgs =
   | [<CustomCommandLine("--sort-dir")>] SortDirection of SortDir
   | [<CustomCommandLine("--sort-col")>] SortColumn of SortCol
+  | [<CustomCommandLine("-l")>] Limit of limit: int
 
   interface IArgParserTemplate with
     member arg.Usage =
       match arg with
       | SortDirection _ -> "sort direction (asc|desc); defaults to desc"
       | SortColumn _ -> "sort column (name|created|accessed|updated); defaults to updated"
+      | Limit _ -> sprintf "result limit (default=%s)" (System.String.Format("{0:#,0}", System.Int32.MaxValue))
 
 let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs: ParseResults<ListArgs>) =
+  let limit = listArgs.GetResult(Limit, System.Int32.MaxValue)
+
   let sortCol: string =
     match listArgs.GetResult(SortColumn, defaultValue = Updated) with
     | Accessed -> "accessed"
@@ -64,7 +68,7 @@ let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs
     listResult |> (List.fold addRow initTable) |> AnsiConsole.Write
 
   sortDir
-  |> Forward.Project.buildListArgs sortCol
+  |> Forward.Project.buildListArgs limit sortCol
   |> Forward.Project.list commandContext
   |> bindResultAsUnitFunc handleListCommandSuccess
 
