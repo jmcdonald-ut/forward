@@ -1,6 +1,6 @@
 module Forward.MySqlHelpers
 
-open Processes
+open Forward.Processes
 open System.Diagnostics
 
 // -- (Private) Context Utils

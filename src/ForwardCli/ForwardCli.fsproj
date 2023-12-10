@@ -5,6 +5,13 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Config.fs" />
+    <Compile Include="Db.fs" />
+    <Compile Include="Explain.fs" />
+    <Compile Include="Init.fs" />
+    <Compile Include="List.fs" />
+    <Compile Include="Rm.fs" />
+    <Compile Include="Switch.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

@@ -1,5 +1,7 @@
 module Forward.Project
 
+open Forward.Numbers
+
 /// This context is shared by the primary public functions in this module.
 type CommandContext = FileHelpers.CommandFileContext
 
@@ -122,16 +124,10 @@ let list (commandContext: CommandContext) (listParams: ListArgs) =
       |> FileHelpers.projectPathTo commandContext
       |> FileHelpers.getFileInfos
 
-    let count: int =
-      match listParams.Limit with
-      | n when n > fileList.Length -> fileList.Length
-      | n when n < 0 -> 0
-      | n -> n
-
     fileList
     |> List.map (asDotenv commandContext)
     |> List.sortWith comparer
-    |> List.take count
+    |> List.take (clamp 0 fileList.Length listParams.Limit)
     |> Ok
   with :? System.IO.DirectoryNotFoundException ->
     Error(sprintf "Project `%s` not found; run fwd init or provide a project name." commandContext.ProjectName)
