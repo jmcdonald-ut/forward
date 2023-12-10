@@ -15,6 +15,7 @@
 #
 #    --project <string>    specify the project name.
 #    --root <string>       specify the path to `fwd` artifacts.
+#    --squelch             squelch errors
 #    --help                display this list of options.
 
 function _fwd() {
@@ -32,25 +33,23 @@ function _fwd() {
         'config[gets or sets variables in a dotenv file]' \
         'backup[backs up a DB]' \
         'restore[restores a DB backup]' \
-        'list[list project dotenv files]' \
         'ls[list project dotenv files]' \
         'rm[remove a dotenv file]' \
-        'switch[switch the project dotenv file]' \
-        's[switch the project dotenv file]'
+        's[switch the project dotenv file]' \
+        '--project[specify the project name]' \
+        '--root[specify path to `fwd` artifacts]' \
+        '--squelch[squelch errors]' \
+        '--help[display list of options and arguments]'
     ;;
     *)
       case $line[1] in
         s)
-          lists=($(fwd --squelch ls -t))
-          _arguments "*:list:($lists)"
-        ;;
-        'switch')
-          lists=($(fwd --squelch ls -t))
-          _arguments "*:list:($lists)"
+          dotenvs=($(fwd --squelch ls -t))
+          _arguments "*:dotenv:($dotenvs)"
         ;;
         rm)
-          lists=($(fwd --squelch ls -t))
-          _arguments "*:list:($lists)"
+          dotenvs=($(fwd --squelch ls -t))
+          _arguments "*:dotenv:($dotenvs)"
         ;;
       esac
     ;;
