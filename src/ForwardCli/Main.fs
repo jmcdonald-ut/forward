@@ -135,6 +135,57 @@ let handleRestoreCommand (commandContext: Forward.Project.CommandContext) (args:
     Ok handler)
 
 // SUBCOMMAND
+//   fwd config
+// ****************************************************************************
+
+type ConfigVarArgs =
+  | [<MainCommand; ExactlyOnce>] Name of name: string
+
+  interface IArgParserTemplate with
+    member arg.Usage =
+      match arg with
+      | Name _ -> "variable name"
+
+[<RequireSubcommand>]
+type ConfigArgs =
+  | [<SubCommand; CliPrefix(CliPrefix.None)>] Get of ParseResults<ConfigVarArgs>
+
+  interface IArgParserTemplate with
+    member arg.Usage =
+      match arg with
+      | Get _ -> "gets a value from the current dotenv"
+
+let handleGet commandContext varName =
+  match Forward.FileHelpers.actualPathToCurrentEnv commandContext with
+  | Error(_) ->
+    match Forward.FileHelpers.getEnvironmentVariableOpt varName with
+    | Some(dbName) -> Ok(dbName)
+    | None -> Error("Unable to resolve a value")
+  | Ok(path) ->
+    let envVars: System.Collections.Generic.IDictionary<string, string> =
+      DotEnv.Read(new DotEnvOptions(envFilePaths = [ path.FullName ]))
+
+    match envVars.ContainsKey varName with
+    | false ->
+      match Forward.FileHelpers.getEnvironmentVariableOpt varName with
+      | Some(value) -> Ok(value)
+      | None -> Error("Unable to resolve a value")
+    | true -> Ok(envVars[varName])
+
+let handleConfigCommand commandContext (args: ParseResults<ConfigArgs>) =
+  let handleSuccess inx =
+    let puts _ = printfn "%O" inx
+    Ok puts
+
+  match args.TryGetSubCommand() with
+  | Some(Get(args)) ->
+    args.GetResult Name
+    |> (fun s -> s.ToUpper())
+    |> handleGet commandContext
+    |> Result.bind handleSuccess
+  | None -> Error("Trouble parsing command")
+
+// SUBCOMMAND
 //   fwd explain
 // ****************************************************************************
 
@@ -203,6 +254,7 @@ let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switch
 type RootArgs =
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Explain
+  | [<SubCommand; CliPrefix(CliPrefix.None)>] Config of ParseResults<ConfigArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup of ParseResults<DbArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Restore of ParseResults<DbArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("ls")>] List of ParseResults<ListArgs>
@@ -217,6 +269,7 @@ type RootArgs =
       | Init -> "initialize a project."
       | Backup _ -> "backs up a DB."
       | Restore _ -> "restores a DB backup."
+      | Config _ -> "gets or sets variables in dotenv file."
       | Explain -> "explains the current context."
       | List _ -> "list project dotenv files."
       | Remove _ -> "remove project dotenv file."
@@ -252,6 +305,7 @@ let routeCommand (results: ParseResults<RootArgs>) (context: Forward.Project.Com
   match results.TryGetSubCommand() with
   | Some(Init) -> handleInitCommand context
   | Some(Explain) -> handleExplainCommand context
+  | Some(Config(args)) -> handleConfigCommand context args
   | Some(Backup(args)) -> handleBackupCommand context args
   | Some(Restore(args)) -> handleRestoreCommand context args
   | Some(List(args)) -> handleListCommand context args
