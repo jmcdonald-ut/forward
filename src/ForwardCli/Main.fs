@@ -271,6 +271,7 @@ type RootArgs =
   | [<CliPrefix(CliPrefix.None); AltCommandLine("s")>] Switch of ParseResults<SwitchArgs>
   | [<CliPrefix(CliPrefix.DoubleDash)>] Project of string
   | [<CliPrefix(CliPrefix.DoubleDash)>] Root of string
+  | [<CliPrefix(CliPrefix.DoubleDash)>] Squelch
 
   interface IArgParserTemplate with
     member arg.Usage =
@@ -286,6 +287,7 @@ type RootArgs =
       // Shared/Root CLI Args
       | Project _ -> "specify the project name."
       | Root _ -> "specify the path to `fwd` artifacts."
+      | Squelch -> "squelch errors"
 
 let checkStructure =
 #if DEBUG
@@ -336,8 +338,11 @@ let private parseAndExecuteCommand (argv: string[]) =
     unitFunc ()
     0
   | Error(reason: string) ->
-    printfn "ERR: %s" reason
-    1
+    match results.Contains(Squelch) with
+    | true -> 1
+    | false ->
+      printfn "ERR: %s" reason
+      1
 
 /// Main entry point that bootstraps and runs the CLI application.
 [<EntryPoint>]

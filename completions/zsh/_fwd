@@ -41,15 +41,15 @@ function _fwd() {
     *)
       case $line[1] in
         s)
-          lists=($(fwd ls -t))
+          lists=($(fwd --squelch ls -t))
           _arguments "*:list:($lists)"
         ;;
         'switch')
-          lists=($(fwd ls -t))
+          lists=($(fwd --squelch ls -t))
           _arguments "*:list:($lists)"
         ;;
         rm)
-          lists=($(fwd ls -t))
+          lists=($(fwd --squelch ls -t))
           _arguments "*:list:($lists)"
         ;;
       esac
