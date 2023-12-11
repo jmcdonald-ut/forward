@@ -1,3 +1,7 @@
+// NOTE: Something about `task` **or** `<CliMutable>` causes issues if trying to
+// run as `dotnet fsi scripts/MySQLDabble.fsi`. For now this needs to be
+// copy-pasted into `dotnet fsi` directly in order to work.
+//
 // See https://blog.tunaxor.me/blog/2021-11-12-Data-Access-In-Fsharp.html
 // See https://github.com/Dzoukr/Dapper.FSharp
 // See https://dev.mysql.com/doc/connector-net/en/connector-net-connections-string.html
