@@ -7,11 +7,6 @@ let private stringMaybe (stringOrNull: string) =
   | "" -> None
   | _ -> Some stringOrNull
 
-let private orMaybe f (res: 'a option) =
-  match res with
-  | Some _ as something -> something
-  | None -> f ()
-
 // System File/Path/Environment Wrappers
 // ****************************************************************************
 
@@ -38,8 +33,8 @@ let asDotenvFileName (name: string) = ".env." + name
 /// otherwise $HOME/.forward.
 let getRootPathOpt (maybePath: string option) =
   maybePath
-  |> orMaybe (fun () -> getEnvironmentVariableOpt "FORWARD_ROOT_PATH") // Try environment var
-  |> orMaybe (fun () ->
+  |> Option.orElseWith (fun () -> getEnvironmentVariableOpt "FORWARD_ROOT_PATH")
+  |> Option.orElseWith (fun () ->
     match getEnvironmentVariableOpt "HOME" with
     | Some path -> Some(System.IO.Path.Combine(path, ".forward"))
     | None -> None)
@@ -48,8 +43,8 @@ let getRootPathOpt (maybePath: string option) =
 /// variable, or if unavailable, the basename of the current directory.
 let getProjectNameOpt (projectNameOpt: string option) =
   projectNameOpt
-  |> orMaybe (fun () -> getEnvironmentVariableOpt "FORWARD_PROJECT_NAME")
-  |> orMaybe (fun () -> currentDirectory () |> getFileName |> stringMaybe)
+  |> Option.orElseWith (fun () -> getEnvironmentVariableOpt "FORWARD_PROJECT_NAME")
+  |> Option.orElseWith (fun () -> currentDirectory () |> getFileName |> stringMaybe)
 
 /// The context for generating file paths.
 type CommandFileContext =
