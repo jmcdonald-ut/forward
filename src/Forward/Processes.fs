@@ -2,8 +2,6 @@ module Forward.Processes
 
 open System.Diagnostics
 
-let private unwrapOrFalse = Option.defaultValue false
-
 type ExecutableProcess =
   { StartInfo: ProcessStartInfo
     Executable: Process
@@ -21,9 +19,9 @@ type ExecutableProcess =
     let startInfo: ProcessStartInfo = new ProcessStartInfo()
     startInfo.FileName <- executableName
     startInfo.Arguments <- arguments
-    startInfo.UseShellExecute <- unwrapOrFalse useShellExecute
-    startInfo.RedirectStandardInput <- unwrapOrFalse redirectStandardInput
-    startInfo.RedirectStandardOutput <- unwrapOrFalse redirectStandardOutput
+    startInfo.UseShellExecute <- Option.defaultValue false useShellExecute
+    startInfo.RedirectStandardInput <- Option.defaultValue false redirectStandardInput
+    startInfo.RedirectStandardOutput <- Option.defaultValue false redirectStandardOutput
     Option.iter (fun (x: string) -> startInfo.WorkingDirectory <- x) workingDirectory
 
     let executable: Process = new Process()
@@ -33,34 +31,26 @@ type ExecutableProcess =
       Executable = executable
       Inspect = sprintf "`%s %s`" executableName arguments }
 
-  static member ExecuteTap(callback: ((Process) -> 'a), executableProcess: ExecutableProcess) =
-    match executableProcess.Executable.Start() with
-    | false -> Error(sprintf "%s failed to start" executableProcess.Inspect)
-    | true ->
-      callback (executableProcess.Executable) |> ignore
-      executableProcess.Executable.WaitForExit()
+let resultOfExit (executableProcess: ExecutableProcess) (forward: 'a) =
+  executableProcess.Executable.WaitForExit()
 
-      match executableProcess.Executable.ExitCode with
-      | 0 -> Ok(executableProcess)
-      | errorCode -> Error(sprintf "%s failed with error code %i" executableProcess.Inspect errorCode)
+  match executableProcess.Executable.ExitCode with
+  | 0 -> Ok(forward)
+  | errorCode -> Error(sprintf "%s failed with error code %i" executableProcess.Inspect errorCode)
 
-  static member ExecuteCapture(callback: ((Process) -> 'a), executableProcess: ExecutableProcess) =
-    match executableProcess.Executable.Start() with
-    | false -> Error(sprintf "%s failed to start" executableProcess.Inspect)
-    | true ->
-      let result: 'a = callback (executableProcess.Executable)
-      executableProcess.Executable.WaitForExit()
+let executeTap (callback: (Process) -> 'a) (executableProcess: ExecutableProcess) =
+  match executableProcess.Executable.Start() with
+  | false -> Error(sprintf "%s failed to start" executableProcess.Inspect)
+  | true ->
+    callback (executableProcess.Executable) |> ignore
+    resultOfExit executableProcess executableProcess
 
-      match executableProcess.Executable.ExitCode with
-      | 0 -> Ok(result)
-      | errorCode -> Error(sprintf "%s failed with error code %i" executableProcess.Inspect errorCode)
+let executeCapture (callback: (Process) -> 'a) (executableProcess: ExecutableProcess) =
+  match executableProcess.Executable.Start() with
+  | false -> Error(sprintf "%s failed to start" executableProcess.Inspect)
+  | true -> executableProcess.Executable |> callback |> resultOfExit executableProcess
 
-  static member Execute(executableProcess: ExecutableProcess) =
-    match executableProcess.Executable.Start() with
-    | false -> Error(sprintf "%s failed to start" executableProcess.Inspect)
-    | true ->
-      executableProcess.Executable.WaitForExit()
-
-      match executableProcess.Executable.ExitCode with
-      | 0 -> Ok(executableProcess)
-      | errorCode -> Error(sprintf "%s failed with error code %i" executableProcess.Inspect errorCode)
+let execute (executableProcess: ExecutableProcess) =
+  match executableProcess.Executable.Start() with
+  | false -> Error(sprintf "%s failed to start" executableProcess.Inspect)
+  | true -> resultOfExit executableProcess executableProcess

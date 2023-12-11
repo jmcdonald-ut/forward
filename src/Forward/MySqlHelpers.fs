@@ -49,7 +49,7 @@ let private mysqlDumpIntoIo (backupContext: BackupContext) =
       redirectStandardOutput = true
     )
 
-  ExecutableProcess.ExecuteCapture(_.StandardOutput.ReadToEnd(), executableProcess)
+  executeCapture (fun x -> x.StandardOutput.ReadToEnd()) executableProcess
 
 let private writeMysqlDumpOut (backupContext: BackupContext) (io: string) =
   do
@@ -67,9 +67,7 @@ let private compressMysqlDump (backupContext: BackupContext) =
       workingDirectory = backupContext.WorkingDirectory
     )
 
-  executableProcess
-  |> ExecutableProcess.Execute
-  |> Result.bind (fun _ -> Ok(backupContext))
+  executableProcess |> execute |> Result.bind (fun _ -> Ok(backupContext))
 
 let private removeIntermediateBackup (backupContext: BackupContext) =
   System.IO.File.Delete(backupContext.BackupPath)
@@ -85,9 +83,7 @@ let private decompressBackup (backupContext: BackupContext) =
       workingDirectory = backupContext.WorkingDirectory
     )
 
-  executableProcess
-  |> ExecutableProcess.Execute
-  |> Result.bind (fun _ -> Ok(backupContext))
+  executableProcess |> execute |> Result.bind (fun _ -> Ok(backupContext))
 
 let private executeMysqlFromBackup (backupContext: BackupContext) =
   let executableProcess: ExecutableProcess =
@@ -102,8 +98,8 @@ let private executeMysqlFromBackup (backupContext: BackupContext) =
     activeProcess.StandardInput.Write(System.IO.File.ReadAllText(backupContext.BackupPath))
     activeProcess.StandardInput.Close()
 
-  (writeAndClose, executableProcess)
-  |> ExecutableProcess.ExecuteTap
+  executableProcess
+  |> executeTap writeAndClose
   |> Result.bind (fun _ -> Ok(backupContext))
 
 // -- Public Interface
