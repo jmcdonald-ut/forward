@@ -13,10 +13,12 @@
 #
 # OPTIONS:
 #
-#    --project <string>    specify the project name.
-#    --root <string>       specify the path to `fwd` artifacts.
-#    --squelch             squelch errors
-#    --help                display this list of options.
+#     --project <string>    specify the project name.
+#     --root <string>       specify the path to `fwd` artifacts.
+#     --squelch             squelch errors
+#     --format <standard|json>
+#                           format
+#     --help                display this list of options.
 
 function _fwd() {
   local line state
@@ -39,6 +41,7 @@ function _fwd() {
         '--project[specify the project name]' \
         '--root[specify path to `fwd` artifacts]' \
         '--squelch[squelch errors]' \
+        '--format[standard or json]' \
         '--help[display list of options and arguments]'
     ;;
     *)
