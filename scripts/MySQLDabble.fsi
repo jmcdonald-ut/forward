@@ -15,7 +15,8 @@ let conn = new MySqlConnection(connstring);;
 [<CLIMutable>]
 type Table =
     { table_name: string
-      table_rows: int };;
+      table_rows: int
+      table_schema: string };;
 
 let tablesTable = table'<Table> "tables";;
 
@@ -23,14 +24,16 @@ task {
   let! allTables =
     select {
       for t in tablesTable do
-        selectAll
+      where (t.table_schema = "<REPLACE_ME>")
+      orderByDescending t.table_rows
     }
     |> conn.SelectAsync<Table>
 
-  printfn "Names: "
+  printfn "| %-40s | %8s |" "Table" "Row #"
+  printfn "| %-40s | %8s |" "----------------------------------------" "--------"
 
   for t in allTables do
-    printfn $"\t%s{t.table_name}"
+    printfn "| %-40s | %8d |" t.table_name t.table_rows
 }
 |> Async.AwaitTask
 |> Async.RunSynchronously;;
