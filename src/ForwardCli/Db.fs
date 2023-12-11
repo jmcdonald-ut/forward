@@ -3,6 +3,8 @@ module ForwardCli.Db
 open Argu
 open dotenv.net
 
+open ForwardCli.OutputResult
+
 // This is used by both `fwd backup` and `fwd restore`.
 type DbArgs =
   | [<CustomCommandLine("--db-name")>] DbName of string
@@ -36,14 +38,19 @@ let private extractDbName (commandContext: Forward.FileHelpers.CommandFileContex
       | false -> fallbackToSystemEnv "DB_NAME"
       | true -> Ok(envVars["DB_NAME"])
 
+let private asOutputResult (result: Result<'a, string>) =
+  match result with
+  | Ok(a) -> RecordResult(a)
+  | Error(reason) -> ErrorResult(reason)
+
 let handleBackupCommand (commandContext: Forward.Project.CommandContext) (args: ParseResults<DbArgs>) =
   args
   |> extractDbName commandContext
   |> Result.bind (Forward.MySqlHelpers.backupDb commandContext)
-  |> Forward.Result.teeResult (fun (value: Forward.MySqlHelpers.BackupContext) -> printfn "OK: %O" value)
+  |> asOutputResult
 
 let handleRestoreCommand (commandContext: Forward.Project.CommandContext) (args: ParseResults<DbArgs>) =
   args
   |> extractDbName commandContext
   |> Result.bind (Forward.MySqlHelpers.restoreDb commandContext)
-  |> Forward.Result.teeResult (fun (res) -> printfn "OK: %O" res)
+  |> asOutputResult

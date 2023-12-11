@@ -1,6 +1,7 @@
 ﻿open Argu
 open Spectre.Console
 
+open ForwardCli.OutputResult
 open ForwardCli.Config
 open ForwardCli.Db
 open ForwardCli.Explain
@@ -68,35 +69,33 @@ let parseCommandLine (argv: string[]) =
 /// Match a parsed command to its handler function.
 let routeCommand (results: ParseResults<RootArgs>) (context: Forward.Project.CommandContext) =
   match results.TryGetSubCommand() with
-  | Some(Init) -> handleInitCommand context
-  | Some(Explain) -> handleExplainCommand context
-  | Some(Config(args)) -> handleConfigCommand context args
-  | Some(Backup(args)) -> handleBackupCommand context args
-  | Some(Restore(args)) -> handleRestoreCommand context args
-  | Some(List(args)) -> handleListCommand context args
-  | Some(Switch(args)) -> handleSwitchCommand context args
-  | Some(Remove(args)) -> handleRemoveCommand context args
-  | Some _ -> Error(sprintf "Got invalid subcommand %O" (results.GetAllResults()))
-  | None -> Error(sprintf "Got none with %O" (results.GetAllResults()))
+  | Some(Init) -> context |> handleInitCommand |> formatPrintAndClassify StandardFormat
+  | Some(Explain) -> context |> handleExplainCommand |> formatPrintAndClassify StandardFormat
+  | Some(Config(args)) -> args |> handleConfigCommand context |> formatPrintAndClassify StandardFormat
+  | Some(Backup(args)) -> args |> handleBackupCommand context |> formatPrintAndClassify StandardFormat
+  | Some(Restore(args)) -> args |> handleRestoreCommand context |> formatPrintAndClassify StandardFormat
+  | Some(List(args)) -> args |> handleListCommand context |> formatPrintAndClassify StandardFormat
+  | Some(Switch(args)) -> args |> handleSwitchCommand context |> formatPrintAndClassify StandardFormat
+  | Some(Remove(args)) -> args |> handleRemoveCommand context |> formatPrintAndClassify StandardFormat
+  | Some _ ->
+    results.GetAllResults()
+    |> sprintf "Got invalid subcommand %O"
+    |> ErrorResult
+    |> formatPrintAndClassify StandardFormat
+  | None ->
+    results.GetAllResults()
+    |> sprintf "Got none with %O"
+    |> ErrorResult
+    |> formatPrintAndClassify StandardFormat
 
 let private parseAndExecuteCommand (argv: string[]) =
   let results: ParseResults<RootArgs> = parseCommandLine argv
   let maybeProjectName: string option = results.TryGetResult(Project)
   let maybeRootPath: string option = results.TryGetResult(Root)
 
-  let commandContext: Result<Forward.FileHelpers.CommandFileContext, string> =
-    Forward.FileHelpers.buildCommandContext maybeRootPath maybeProjectName
-
-  match Result.bind (routeCommand results) commandContext with
-  | Ok unitFunc ->
-    unitFunc ()
-    0
-  | Error(reason: string) ->
-    match results.Contains(Squelch) with
-    | true -> 1
-    | false ->
-      printfn "ERR: %s" reason
-      1
+  match Forward.FileHelpers.buildCommandContext maybeRootPath maybeProjectName with
+  | Ok(context) -> routeCommand results context
+  | Error(reason) -> reason |> ErrorResult |> formatPrintAndClassify StandardFormat
 
 /// Main entry point that bootstraps and runs the CLI application.
 [<EntryPoint>]

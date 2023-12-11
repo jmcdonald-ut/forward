@@ -5,6 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="OutputResult.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="Db.fs" />
     <Compile Include="Explain.fs" />

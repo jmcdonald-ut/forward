@@ -3,6 +3,8 @@ module ForwardCli.List
 open Argu
 open Spectre.Console
 
+open ForwardCli.OutputResult
+
 type SortDir = Forward.Project.ListDirection
 
 type SortCol =
@@ -46,29 +48,27 @@ let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs
   let asFormattedDateTime (dateTime: System.DateTime) =
     dateTime.ToString("dd MMM yyyy @ HH:mm:ss")
 
-  let handleListCommandSuccess (listResult: Forward.Project.ListEntry list) =
+  let handleListCommandSuccess (rows: Forward.Project.ListEntry list) =
     let rowLabel (item: Forward.Project.ListEntry) =
       match item with
       | ({ IsCurrent = true; Name = name }) -> sprintf "[green]%s[/]" name
       | ({ Name = name }) -> sprintf "[blue]%s[/]" name
 
-    let addRow (table: Table) (item: Forward.Project.ListEntry) =
+    let folder (table: Table) (item: Forward.Project.ListEntry) =
       let indicator: string = if item.IsCurrent then "[green]»[/]" else ""
       let label: string = rowLabel item
       let updatedAt: string = asFormattedDateTime item.LastWriteTime
       table.AddRow(indicator, label, updatedAt)
 
     match listArgs.Contains(Terse) with
-    | false ->
-      let initTable: Table =
-        (new Table()).AddColumns([| " "; "Environment"; "Last Updated" |])
+    | false -> TableResult(makeTableResult [| " "; "Environment"; "Last Updated" |] folder rows)
+    | true -> rows |> List.map _.Name |> ListResult
 
-      listResult |> (List.fold addRow initTable) |> AnsiConsole.Write
-    | true ->
-      listResult
-      |> (List.iter (fun (l: Forward.Project.ListEntry) -> printfn "%s" l.Name))
+  let listResult =
+    sortDir
+    |> Forward.Project.buildListArgs limit sortCol
+    |> Forward.Project.list commandContext
 
-  sortDir
-  |> Forward.Project.buildListArgs limit sortCol
-  |> Forward.Project.list commandContext
-  |> Forward.Result.teeResult handleListCommandSuccess
+  match listResult with
+  | Ok(rows) -> handleListCommandSuccess rows
+  | Error(reason) -> ErrorResult(reason)

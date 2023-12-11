@@ -1,11 +1,12 @@
 module ForwardCli.Explain
 
+open ForwardCli.OutputResult
+
 // SUBCOMMAND
 //   fwd explain
 // ****************************************************************************
 
 let handleExplainCommand (commandContext: Forward.Project.CommandContext) =
-  commandContext
-  |> Forward.Project.explain
-  |> Forward.Result.teeResult (fun (explainResult: Forward.Project.ExplainOutput) ->
-    explainResult |> printfn "%O" |> ignore)
+  match Forward.Project.explain commandContext with
+  | Ok(record) -> RecordResult(record)
+  | Error(reason) -> ErrorResult(reason)

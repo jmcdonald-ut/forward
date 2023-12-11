@@ -2,6 +2,8 @@ module ForwardCli.Switch
 
 open Argu
 
+open ForwardCli.OutputResult
+
 type SwitchArgs =
   | [<MainCommand; ExactlyOnce>] Name of name: string
   | [<CustomCommandLine("-b")>] Create
@@ -24,6 +26,6 @@ let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switch
         | true -> Forward.Project.SwitchMode.Create
         | _ -> Forward.Project.SwitchMode.ReadOnly }
 
-  normalizedSwitchArgs
-  |> Forward.Project.switch commandContext
-  |> Forward.Result.teeResult (fun _ -> printfn "SUCCESS")
+  match Forward.Project.switch commandContext normalizedSwitchArgs with
+  | Ok(string) -> StringResult(sprintf "Switched to %s" string)
+  | Error(reason) -> ErrorResult(reason)

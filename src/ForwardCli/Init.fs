@@ -1,10 +1,12 @@
 module ForwardCli.Init
 
+open ForwardCli.OutputResult
+
 // SUBCOMMAND
 //   fwd init
 // ****************************************************************************
 
 let handleInitCommand (commandContext: Forward.Project.CommandContext) =
-  commandContext
-  |> Forward.Project.init
-  |> Forward.Result.teeResult (fun (initResult: string) -> printfn "OK init → %O" initResult)
+  match Forward.Project.init commandContext with
+  | Ok(string) -> StringResult(string)
+  | Error(reason) -> ErrorResult(reason)
