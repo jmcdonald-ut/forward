@@ -17,7 +17,7 @@ let private findOrCreateMysqlBackupsDirectory (commandContext: FileHelpers.Comma
   (commandContext.ProjectPath, "mysql_backups")
   |> System.IO.Path.Join
   |> System.IO.Directory.CreateDirectory
-  |> (fun (dir: System.IO.DirectoryInfo) -> dir.FullName)
+  |> _.FullName
 
 let private buildBackupContext (commandContext: FileHelpers.CommandFileContext) (dbName: string) =
   let backupName: string = sprintf "%s.dump.sql" dbName

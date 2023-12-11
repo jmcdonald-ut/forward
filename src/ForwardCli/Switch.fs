@@ -2,7 +2,7 @@ module ForwardCli.Switch
 
 open Argu
 
-open ForwardCli.OutputResult
+open Forward.Project
 
 type SwitchArgs =
   | [<MainCommand; ExactlyOnce>] Name of name: string
@@ -18,14 +18,10 @@ type SwitchArgs =
 //   fwd switch
 // ****************************************************************************
 
-let handleSwitchCommand (commandContext: Forward.Project.CommandContext) (switchArgs: ParseResults<SwitchArgs>) =
-  let normalizedSwitchArgs: Forward.Project.SwitchArgs =
-    { Forward.Project.SwitchArgs.Name = switchArgs.GetResult(Name)
-      Forward.Project.SwitchArgs.Mode =
-        match switchArgs.Contains(Create) with
-        | true -> Forward.Project.SwitchMode.Create
-        | _ -> Forward.Project.SwitchMode.ReadOnly }
+let handleSwitchCommand (commandContext: CommandContext) (args: ParseResults<SwitchArgs>) =
+  let hasCreateFlag: bool = args.Contains(Create)
+  let mode: SwitchMode = if hasCreateFlag then SwitchMode.Create else ReadOnly
+  let name: string = args.GetResult(Name)
+  let args: Forward.Project.SwitchArgs = { Name = name; Mode = mode }
 
-  match Forward.Project.switch commandContext normalizedSwitchArgs with
-  | Ok(string) -> StringResult(sprintf "Switched to %s" string)
-  | Error(reason) -> ErrorResult(reason)
+  args |> switch commandContext |> OutputResult.stringResultOf

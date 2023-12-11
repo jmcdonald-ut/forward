@@ -30,6 +30,20 @@ type ListArgs =
 // SUBCOMMAND: fwd list
 // ****************************************************************************
 
+let private rowLabel (item: Forward.Project.ListEntry) =
+  match item with
+  | ({ IsCurrent = true; Name = name }) -> sprintf "[green]%s[/]" name
+  | ({ Name = name }) -> sprintf "[blue]%s[/]" name
+
+let private asFormattedDateTime (dateTime: System.DateTime) =
+  dateTime.ToString("dd MMM yyyy @ HH:mm:ss")
+
+let private folder (table: Table) (item: Forward.Project.ListEntry) =
+  let indicator: string = if item.IsCurrent then "[green]»[/]" else ""
+  let label: string = rowLabel item
+  let updatedAt: string = asFormattedDateTime item.LastWriteTime
+  table.AddRow(indicator, label, updatedAt)
+
 let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs: ParseResults<ListArgs>) =
   let limit: int = listArgs.GetResult(Limit, System.Int32.MaxValue)
 
@@ -45,30 +59,13 @@ let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs
     | SortDir.Desc -> "desc"
     | SortDir.Asc -> "asc"
 
-  let asFormattedDateTime (dateTime: System.DateTime) =
-    dateTime.ToString("dd MMM yyyy @ HH:mm:ss")
-
   let handleListCommandSuccess (rows: Forward.Project.ListEntry list) =
-    let rowLabel (item: Forward.Project.ListEntry) =
-      match item with
-      | ({ IsCurrent = true; Name = name }) -> sprintf "[green]%s[/]" name
-      | ({ Name = name }) -> sprintf "[blue]%s[/]" name
-
-    let folder (table: Table) (item: Forward.Project.ListEntry) =
-      let indicator: string = if item.IsCurrent then "[green]»[/]" else ""
-      let label: string = rowLabel item
-      let updatedAt: string = asFormattedDateTime item.LastWriteTime
-      table.AddRow(indicator, label, updatedAt)
-
     match listArgs.Contains(Terse) with
     | false -> TableResult(makeTableResult [| " "; "Environment"; "Last Updated" |] folder rows)
     | true -> rows |> List.map _.Name |> ListResult
 
-  let listResult =
-    sortDir
-    |> Forward.Project.buildListArgs limit sortCol
-    |> Forward.Project.list commandContext
-
-  match listResult with
-  | Ok(rows) -> handleListCommandSuccess rows
-  | Error(reason) -> ErrorResult(reason)
+  sortDir
+  |> Forward.Project.buildListArgs limit sortCol
+  |> Forward.Project.list commandContext
+  |> Result.map (fun (rows: Forward.Project.ListEntry list) -> handleListCommandSuccess rows)
+  |> Result.defaultWith (fun (reason: string) -> ErrorResult(reason))

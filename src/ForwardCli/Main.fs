@@ -28,19 +28,21 @@ type RootArgs =
   interface IArgParserTemplate with
     member arg.Usage =
       match arg with
-      | Init -> "initialize a project."
       | Backup _ -> "backs up a DB."
-      | Restore _ -> "restores a DB backup."
       | Config _ -> "gets or sets variables in dotenv file."
       | Explain -> "explains the current context."
+      | Init -> "initialize a project."
       | List _ -> "list project dotenv files."
       | Remove _ -> "remove project dotenv file."
+      | Restore _ -> "restores a DB backup."
       | Switch _ -> "switch the project's dotenv file."
       // Shared/Root CLI Args
       | Project _ -> "specify the project name."
       | Root _ -> "specify the path to `fwd` artifacts."
       | Squelch -> "squelch errors"
       | Format _ -> "format"
+
+type RootArgsStringFormat = Printf.StringFormat<(RootArgs list -> string)>
 
 let checkStructure =
 #if DEBUG
@@ -68,40 +70,42 @@ let parseCommandLine (argv: string[]) =
     .Create<RootArgs>(programName = "fwd", errorHandler = errorHandler, checkStructure = checkStructure)
     .ParseCommandLine(argv)
 
-let printAndExit (rootArgs: ParseResults<RootArgs>) (result: CommandResult<'row, 'record>) =
-  let format: OutputFormat = rootArgs.GetResult(Format, Standard)
-  formatPrintAndClassify format result
+let failWith (rootArgs: ParseResults<RootArgs>) (strf: RootArgsStringFormat) (format: OutputFormat) =
+  let squelchError: bool = rootArgs.Contains(Squelch)
+
+  rootArgs.GetAllResults()
+  |> sprintf strf
+  |> ErrorResult
+  |> printAndExit format squelchError
 
 /// Match a parsed command to its handler function.
-let routeCommand (rootArgs: ParseResults<RootArgs>) (context: Forward.Project.CommandContext) =
+let routeCommand (rootArgs: ParseResults<RootArgs>) (format: OutputFormat) (context: Forward.Project.CommandContext) =
+  let squelchError: bool = rootArgs.Contains(Squelch)
+
+  let doPrintAndExit =
+    fun (result: CommandResult<'row>) -> printAndExit format squelchError result
+
   match rootArgs.TryGetSubCommand() with
-  | Some(Init) -> context |> handleInitCommand |> printAndExit rootArgs
-  | Some(Explain) -> context |> handleExplainCommand |> printAndExit rootArgs
-  | Some(Config(args)) -> args |> handleConfigCommand context |> printAndExit rootArgs
-  | Some(Backup(args)) -> args |> handleBackupCommand context |> printAndExit rootArgs
-  | Some(Restore(args)) -> args |> handleRestoreCommand context |> printAndExit rootArgs
-  | Some(List(args)) -> args |> handleListCommand context |> printAndExit rootArgs
-  | Some(Switch(args)) -> args |> handleSwitchCommand context |> printAndExit rootArgs
-  | Some(Remove(args)) -> args |> handleRemoveCommand context |> printAndExit rootArgs
-  | Some _ ->
-    rootArgs.GetAllResults()
-    |> sprintf "Got invalid subcommand %O"
-    |> ErrorResult
-    |> printAndExit rootArgs
-  | None ->
-    rootArgs.GetAllResults()
-    |> sprintf "Got none with %O"
-    |> ErrorResult
-    |> printAndExit rootArgs
+  | Some(Backup(args)) -> args |> handleBackupCommand context |> doPrintAndExit
+  | Some(Config(args)) -> args |> handleConfigCommand context |> doPrintAndExit
+  | Some(Explain) -> context |> handleExplainCommand |> doPrintAndExit
+  | Some(Init) -> context |> handleInitCommand |> doPrintAndExit
+  | Some(List(args)) -> args |> handleListCommand context |> doPrintAndExit
+  | Some(Remove(args)) -> args |> handleRemoveCommand context |> doPrintAndExit
+  | Some(Restore(args)) -> args |> handleRestoreCommand context |> doPrintAndExit
+  | Some(Switch(args)) -> args |> handleSwitchCommand context |> doPrintAndExit
+  | _ -> failWith rootArgs "Got invalid subcommand %O" format
 
 let private parseAndExecuteCommand (argv: string[]) =
   let rootArgs: ParseResults<RootArgs> = parseCommandLine argv
+  let format: OutputFormat = rootArgs.GetResult(Format, Standard)
   let maybeProjectName: string option = rootArgs.TryGetResult(Project)
   let maybeRootPath: string option = rootArgs.TryGetResult(Root)
+  let squelchError: bool = rootArgs.Contains(Squelch)
 
   match Forward.FileHelpers.buildCommandContext maybeRootPath maybeProjectName with
-  | Ok(context) -> routeCommand rootArgs context
-  | Error(reason) -> reason |> ErrorResult |> printAndExit rootArgs
+  | Ok(context) -> routeCommand rootArgs format context
+  | Error(reason) -> reason |> ErrorResult |> printAndExit format squelchError
 
 /// Main entry point that bootstraps and runs the CLI application.
 [<EntryPoint>]

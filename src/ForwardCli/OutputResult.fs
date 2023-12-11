@@ -14,62 +14,58 @@ type TableResult<'row> =
     Folder: Table -> 'row -> Table
     Rows: 'row list }
 
-type CommandResult<'row, 'record> =
+type CommandResult<'record> =
   | ListResult of string list
   | StringResult of string
   | ErrorResult of string
   | RecordResult of 'record
-  | TableResult of TableResult<'row>
+  | TableResult of TableResult<'record>
 
-type private SerializableError = { Message: string; Error: bool }
+type SerializableError = { Message: string; Error: bool }
 
 let makeTableResult (columns: string array) (folder: Table -> 'row -> Table) (rows: 'row list) =
   { Columns = columns
     Folder = folder
     Rows = rows }
 
-let formatAndPrintList (format: OutputFormat) (list: string list) =
-  match format with
-  | Json -> list |> JsonSerializer.Serialize |> printfn "%s"
-  | Standard -> List.iter (fun (str: string) -> printfn "%s" str) list
-
-let formatAndPrintTable (format: OutputFormat) (table: TableResult<'row>) =
-  match format with
-  | Json -> table.Rows |> JsonSerializer.Serialize |> printfn "%s"
-  | Standard ->
-    new Table()
-    |> _.AddColumns(table.Columns)
-    |> (fun (spectreTable: Table) -> List.fold table.Folder spectreTable table.Rows)
-    |> AnsiConsole.Write
-
-let formatAndPrintRecord (format: OutputFormat) (record: 'record) =
-  match format with
-  | Json -> record |> JsonSerializer.Serialize |> printfn "%s"
-  | Standard -> printfn "%O" record
-
-let formatAndPrintString (format: OutputFormat) (string: string) =
-  match format with
-  | Json -> string |> JsonSerializer.Serialize |> printfn "%s"
-  | Standard -> printfn "%s" string
-
-let formatAndPrintError (format: OutputFormat) (error: string) =
-  match format with
-  | Json -> { Message = error; Error = true } |> JsonSerializer.Serialize |> printfn "%s"
-  | Standard -> AnsiConsole.MarkupLine(sprintf "[red]%s[/]" error)
-
-let formatAndPrintResult (format: OutputFormat) (result: CommandResult<'row, 'record>) =
+let recordResultOf (result: Result<'a, string>) =
   match result with
-  | ListResult(list) -> formatAndPrintList format list
-  | StringResult(string) -> formatAndPrintString format string
-  | TableResult(table) -> formatAndPrintTable format table
-  | RecordResult(record) -> formatAndPrintRecord format record
-  | ErrorResult(error) -> formatAndPrintError format error
+  | Ok(a) -> RecordResult(a)
+  | Error(reason) -> ErrorResult(reason)
 
-let formatPrintAndClassify (format: OutputFormat) (result: CommandResult<'row, 'record>) =
+let stringResultOf (result: Result<string, string>) =
   match result with
-  | ErrorResult(_) as errorResult ->
+  | Ok(a) -> StringResult(a)
+  | Error(reason) -> ErrorResult(reason)
+
+let formatAndPrintJson (value: 'a) =
+  value |> JsonSerializer.Serialize |> printfn "%s"
+
+let printTableStandardFormat (table: TableResult<'row>) =
+  new Table()
+  |> _.AddColumns(table.Columns)
+  |> (fun (spectreTable: Table) -> List.fold table.Folder spectreTable table.Rows)
+  |> AnsiConsole.Write
+
+let formatAndPrintResult (format: OutputFormat) (result: CommandResult<'record>) =
+  match format, result with
+  | Json, ListResult(value) -> formatAndPrintJson value
+  | Json, StringResult(value) -> formatAndPrintJson value
+  | Json, TableResult(value) -> formatAndPrintJson value.Rows
+  | Json, RecordResult(value) -> formatAndPrintJson value
+  | Json, ErrorResult(value) -> formatAndPrintJson { Message = value; Error = true }
+  | Standard, ListResult(list) -> List.iter (fun (str: string) -> printfn "%s" str) list
+  | Standard, StringResult(string) -> printfn "%s" string
+  | Standard, TableResult(table) -> printTableStandardFormat table
+  | Standard, RecordResult(record) -> printfn "%O" record
+  | Standard, ErrorResult(error) -> AnsiConsole.MarkupLine(sprintf "[red]%s[/]" error)
+
+let printAndExit (format: OutputFormat) (squelchError: bool) (result: CommandResult<'record>) =
+  match squelchError, result with
+  | true, ErrorResult(_) -> 1
+  | false, (ErrorResult(_) as errorResult) ->
     formatAndPrintResult format errorResult
     1
-  | result ->
+  | _, result ->
     formatAndPrintResult format result
     0
