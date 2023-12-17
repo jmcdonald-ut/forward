@@ -4,4 +4,5 @@ storage: none
 framework: net8.0, netstandard2.0, netstandard2.1
 nuget argu
 nuget dotenv.net
+nuget nunit
 nuget spectre.console

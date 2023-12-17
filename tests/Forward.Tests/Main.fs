@@ -1,7 +1,4 @@
 ﻿module Forward.Tests.Main
 
-open Expecto
-
 [<EntryPoint>]
-let main argv =
-  Tests.runTestsInAssembly defaultConfig argv
+let main _ = 0

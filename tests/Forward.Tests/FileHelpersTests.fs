@@ -1,54 +1,44 @@
 module Forward.Tests.FileHelpersTests
 
-open Expecto
+open NUnit.Framework
 open Forward.FileHelpers
 
-let setRootPathEnv str =
-  System.Environment.SetEnvironmentVariable("FORWARD_ROOT_PATH", str)
+[<TestFixture>]
+type Tests() =
+  let mutable priorRootPath: string = null
+  let mutable priorHomePath: string = null
 
-let getRootPathEnv () =
-  Environment.getEnvironmentVariable "FORWARD_ROOT_PATH"
+  [<SetUp>]
+  member this.setUpWithEnvVarSnapshot() =
+    priorRootPath <- Environment.getEnvironmentVariable "FORWARD_ROOT_PATH"
+    priorHomePath <- Environment.getEnvironmentVariable "HOME"
 
-let setHomePathEnv str =
-  Environment.setEnvironmentVariable "HOME", str
+  [<TearDown>]
+  member this.tearDownByRestoringEnvVarSnapshot() =
+    Environment.setEnvironmentVariable "FORWARD_ROOT_PATH" priorRootPath
+    Environment.setEnvironmentVariable "HOME" priorHomePath
 
-let getHomePathEnv () =
-  Environment.getEnvironmentVariable "HOME"
+  [<Test>]
+  member this.testGetRootPathOptReturnsArgIfGiven() =
+    let inputAndExpected: string option = Some "thing"
+    let actual: string option = getRootPathOpt inputAndExpected
 
-[<Tests>]
-let tests =
-  testSequenced
-  <| testList
-    "Forward.FileHelpers"
-    [ testCase "getRootPathOpt will return its argument if it's something"
-      <| fun _ ->
-        let input = Some "thing"
-        let actual = getRootPathOpt input
-        Expect.equal actual input "Expected input to be forwarded"
+    Assert.That(actual, Is.EqualTo(inputAndExpected))
 
-      testCase "getRootPathOpt falls back to $FORWARD_ROOT_PATH if available"
-      <| fun _ ->
-        let prior = getRootPathEnv ()
+  [<Test>]
+  member this.testGetRootPathOptFallsBackToEnvVariable() =
+    Environment.setEnvironmentVariable "FORWARD_ROOT_PATH" "/foo/bar"
+    let expected: string option = Some "/foo/bar"
 
-        try
-          setRootPathEnv "/foo/bar"
-          let input = None
-          let actual = getRootPathOpt input
-          Expect.equal actual (Some "/foo/bar") "Expected fallback to be used"
-        finally
-          setRootPathEnv prior
+    let actual: string option = getRootPathOpt None
 
-      testCase "getRootPathOpt falls back to $HOME/.forward"
-      <| fun _ ->
-        let priorRootEnv = getRootPathEnv ()
-        let priorHomeEnv = getHomePathEnv ()
+    Assert.That(actual, Is.EqualTo(expected))
 
-        try
-          setRootPathEnv null
-          setHomePathEnv "/home" |> ignore
-          let input = None
-          let actual = getRootPathOpt input
-          Expect.equal actual (Some "/home/.forward") "Expected fallback to be used"
-        finally
-          setHomePathEnv priorHomeEnv |> ignore
-          setRootPathEnv priorRootEnv ]
+  [<Test>]
+  member this.testGetRootPathOptFallsBackToHome() =
+    Environment.setEnvironmentVariable "FORWARD_ROOT_PATH" null
+    Environment.setEnvironmentVariable "HOME" "/home"
+
+    let actual: string option = getRootPathOpt None
+
+    Assert.That(actual, Is.EqualTo(Some "/home/.forward"))
