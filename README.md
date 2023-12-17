@@ -1,6 +1,58 @@
-# fwd
+# Forward (fwd)
 
-fwd is a personal command line tool to help with dev work. This is my first F# project, and I'm using it as a springboard to learn the language.
+Forward is a personal command line tool to help with dev work. This is my first F# project, and I'm using it as a springboard to learn the language.
+
+```sh
+# Initialize a Forward project. This will create or replace
+# `.env` with a symlink to the "active" `.env` file now
+# managed by Forward.
+fwd init
+
+# Use --help for the top-level command or any subcommands
+# to get more info.
+fwd --help
+fwd ls --help
+
+# Explain the context used by Forward commands. Here's a
+# brief explanation of each key in the output.
+#
+# RootPath: Holds all Forward projects.
+# ProjectName: Name of the active Forward project.
+# ProjectPath: Path to the project codebase.
+# DotEnvSymLinkPath: .env in the codebase points to this.
+# DotEnvPath: Complete path to active .env
+#
+# Note that DotEnvSymLinkPath is itself a link.
+#
+#   ~/rails/.env
+#   -> ~/.forward/rails/.env.current
+#   -> ~/.forward/rails/dotenvs/.env.development.fresh
+fwd explain
+#=> { RootPath = "/Users/jon/.forward"
+#=>   ProjectName = "rails"
+#=>   ProjectPath = "/Users/jon/.forward/rails"
+#=>   DotEnvSymLinkPath = Some "/Users/jon/.forward/rails/.env.current"
+#=>   DotEnvPath = Some "/Users/jon/.forward/rails/dotenvs/.env.development.fresh" }
+
+# Switch out the .env file used in the current project.
+# Pass `-b` to create a new .env file and switch to it.
+fwd s -b lots-of-data
+fwd s main
+
+# View a list of available .env files
+fwd ls
+
+# Remove a .env file that's no longer needed.
+fwd rm lots-of-data
+
+# Get the value of an environment variable (taking into
+# consideration the current .env file)
+fwd config get db_name
+
+# Backup or restore a MySQL DB based on the current .env.
+fwd backup
+fwd restore
+```
 
 ## Setup / Build / Release
 
