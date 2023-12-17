@@ -1,4 +1,4 @@
-module Forward.Numbers
+module Math
 
 let clamp (min: 'a) (max: 'a) (actual: 'a) =
   match actual with

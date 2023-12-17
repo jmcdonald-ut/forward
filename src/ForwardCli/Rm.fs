@@ -1,6 +1,7 @@
 module ForwardCli.Rm
 
 open Argu
+open Forward
 
 type RemoveArgs =
   | [<MainCommand; ExactlyOnce>] Name of string
@@ -14,8 +15,8 @@ type RemoveArgs =
 //   fwd rm
 // ****************************************************************************
 
-let handleRemoveCommand (commandContext: Forward.Project.CommandContext) (removeArgs: ParseResults<RemoveArgs>) =
-  let name: string = removeArgs.GetResult Name
-  let args: Forward.Project.RemoveArgs = { Name = name }
-
-  args |> Forward.Project.remove commandContext |> OutputResult.stringResultOf
+let handleRemoveCommand (commandContext: CommandContext.FileCommandContext) (removeArgs: ParseResults<RemoveArgs>) =
+  Name
+  |> removeArgs.GetResult
+  |> Project.remove commandContext
+  |> OutputResult.stringResultOf

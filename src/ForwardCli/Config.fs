@@ -27,7 +27,7 @@ type ConfigArgs =
       | Get _ -> "gets a value from the current dotenv"
 
 let private fallbackToSystemEnv (varName: string) =
-  match Forward.FileHelpers.getEnvironmentVariableOpt varName with
+  match Environment.getEnvironmentVariableOpt varName with
   | Some(value) -> StringResult(value)
   | None -> ErrorResult("Unable to resolve a value")
 
@@ -39,12 +39,12 @@ let private extractFromEnvFileOrFallbackToSystemEnv (varName: string) (path: Sys
   | false -> fallbackToSystemEnv varName
   | true -> StringResult(envVars[varName])
 
-let private handleGet (commandContext: Forward.FileHelpers.CommandFileContext) (varName: string) =
+let private handleGet (commandContext: Forward.CommandContext.FileCommandContext) (varName: string) =
   match Forward.FileHelpers.actualPathToCurrentEnv commandContext with
   | Error(_) -> fallbackToSystemEnv varName
   | Ok(path) -> extractFromEnvFileOrFallbackToSystemEnv varName path
 
-let handleConfigCommand (commandContext: Forward.FileHelpers.CommandFileContext) (args: ParseResults<ConfigArgs>) =
+let handleConfigCommand (commandContext: Forward.CommandContext.FileCommandContext) (args: ParseResults<ConfigArgs>) =
   match args.TryGetSubCommand() with
   | Some(Get(args)) -> args.GetResult Name |> _.ToUpper() |> handleGet commandContext
   | None -> ErrorResult("Trouble parsing command")

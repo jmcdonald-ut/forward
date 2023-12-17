@@ -14,7 +14,7 @@ type DbArgs =
       match arg with
       | DbName _ -> "database name to backup; falls back to DB_NAME in current .env file"
 
-type DbCommandFun = Project.CommandContext -> string -> Result<MySqlHelpers.BackupContext, string>
+type DbCommandFun = CommandContext.FileCommandContext -> string -> Result<MySqlHelpers.BackupContext, string>
 
 // SUBCOMMANDS
 //   fwd backup
@@ -22,11 +22,11 @@ type DbCommandFun = Project.CommandContext -> string -> Result<MySqlHelpers.Back
 // ****************************************************************************
 
 let private fallbackToSystemEnv (key: string) =
-  match FileHelpers.getEnvironmentVariableOpt key with
+  match Environment.getEnvironmentVariableOpt key with
   | Some(dbName) -> Ok(dbName)
   | None -> Error("Unable to resolve a DB name (no --db-name and no DB_NAME)")
 
-let private extractDbName (cmdCtxt: FileHelpers.CommandFileContext) (args: ParseResults<DbArgs>) =
+let private extractDbName (cmdCtxt: CommandContext.FileCommandContext) (args: ParseResults<DbArgs>) =
   match args.TryGetResult(DbName) with
   | Some(dbName) -> Ok(dbName)
   | None ->
@@ -40,7 +40,7 @@ let private extractDbName (cmdCtxt: FileHelpers.CommandFileContext) (args: Parse
       | false -> fallbackToSystemEnv "DB_NAME"
       | true -> Ok(envVars["DB_NAME"])
 
-let doDbCommand (dbCommand: DbCommandFun) (cmdCtxt: FileHelpers.CommandFileContext) (args: ParseResults<DbArgs>) =
+let doDbCommand (dbCommand: DbCommandFun) (cmdCtxt: CommandContext.FileCommandContext) (args: ParseResults<DbArgs>) =
   args
   |> extractDbName cmdCtxt
   |> Result.bind (dbCommand cmdCtxt)

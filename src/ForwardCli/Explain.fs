@@ -4,5 +4,5 @@ module ForwardCli.Explain
 //   fwd explain
 // ****************************************************************************
 
-let handleExplainCommand (commandContext: Forward.Project.CommandContext) =
+let handleExplainCommand (commandContext: Forward.CommandContext.FileCommandContext) =
   commandContext |> Forward.Project.explain |> OutputResult.recordResultOf

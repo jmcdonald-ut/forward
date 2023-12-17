@@ -76,7 +76,7 @@ cp src/ForwardCli/bin/Release/net8.0/osx-arm64/publish/ForwardCli [wherever]
 
 ```
 # Format
-dotnet fantomas src/**/*.fs
+dotnet fantomas src/**/*.fs tests/**/*.fs
 
 # Test
 dotnet test

@@ -18,10 +18,9 @@ type SwitchArgs =
 //   fwd switch
 // ****************************************************************************
 
-let handleSwitchCommand (commandContext: CommandContext) (args: ParseResults<SwitchArgs>) =
+let handleSwitchCommand (commandContext: Forward.CommandContext.FileCommandContext) (args: ParseResults<SwitchArgs>) =
   let hasCreateFlag: bool = args.Contains(Create)
   let mode: SwitchMode = if hasCreateFlag then SwitchMode.Create else ReadOnly
   let name: string = args.GetResult(Name)
-  let args: Forward.Project.SwitchArgs = { Name = name; Mode = mode }
 
-  args |> switch commandContext |> OutputResult.stringResultOf
+  mode |> switch commandContext name |> OutputResult.stringResultOf

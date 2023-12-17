@@ -79,7 +79,11 @@ let failWith (rootArgs: ParseResults<RootArgs>) (strf: RootArgsStringFormat) (fo
   |> printAndExit format squelchError
 
 /// Match a parsed command to its handler function.
-let routeCommand (rootArgs: ParseResults<RootArgs>) (format: OutputFormat) (context: Forward.Project.CommandContext) =
+let routeCommand
+  (rootArgs: ParseResults<RootArgs>)
+  (format: OutputFormat)
+  (context: Forward.CommandContext.FileCommandContext)
+  =
   let squelchError: bool = rootArgs.Contains(Squelch)
 
   let doPrintAndExit =
@@ -103,7 +107,7 @@ let private parseAndExecuteCommand (argv: string[]) =
   let maybeRootPath: string option = rootArgs.TryGetResult(Root)
   let squelchError: bool = rootArgs.Contains(Squelch)
 
-  match Forward.FileHelpers.buildCommandContext maybeRootPath maybeProjectName with
+  match Forward.CommandContext.buildFileCommandContext maybeRootPath maybeProjectName with
   | Ok(context) -> routeCommand rootArgs format context
   | Error(reason) -> reason |> ErrorResult |> printAndExit format squelchError
 

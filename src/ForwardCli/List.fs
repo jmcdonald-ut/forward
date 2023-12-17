@@ -44,7 +44,7 @@ let private folder (table: Table) (item: Forward.Project.ListEntry) =
   let updatedAt: string = asFormattedDateTime item.LastWriteTime
   table.AddRow(indicator, label, updatedAt)
 
-let handleListCommand (commandContext: Forward.Project.CommandContext) (listArgs: ParseResults<ListArgs>) =
+let handleListCommand (commandContext: Forward.CommandContext.FileCommandContext) (listArgs: ParseResults<ListArgs>) =
   let limit: int = listArgs.GetResult(Limit, System.Int32.MaxValue)
 
   let sortCol: string =

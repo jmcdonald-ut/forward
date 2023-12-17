@@ -4,11 +4,13 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Result.fs" />
+    <Compile Include="CommandContext.fs" />
     <Compile Include="FileHelpers.fs" />
     <Compile Include="Processes.fs" />
     <Compile Include="MySqlHelpers.fs" />
-    <Compile Include="Numbers.fs" />
     <Compile Include="Project.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Prelude\Prelude.fsproj" />
   </ItemGroup>
 </Project>

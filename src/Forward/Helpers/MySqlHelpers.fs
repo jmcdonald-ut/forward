@@ -1,5 +1,6 @@
 module Forward.MySqlHelpers
 
+open Forward.Project
 open Forward.Processes
 open System.Diagnostics
 

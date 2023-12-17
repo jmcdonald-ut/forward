@@ -1,29 +1,22 @@
 module Forward.Project
 
-open Forward.Numbers
-
-/// This context is shared by the primary public functions in this module.
-type CommandContext = FileHelpers.CommandFileContext
-
 /// Initializes a new project if one does't already exist. If one does exist,
 /// this re-runs the init logic in a non-destructive manner.
-let init (commandContext: CommandContext) : Result<string, string> =
+let init (commandContext: CommandContext.FileCommandContext) : Result<string, string> =
   let createDirectory _ =
     commandContext.ProjectPath
     |> FileHelpers.whenFileOrDirectoryIsMissing (fun (path: string) ->
-      path |> System.IO.Directory.CreateDirectory |> ignore
-      Ok(sprintf "`%s` created" path))
+      Ok(sprintf "`%s` created" (File.createDirectory path).FullName))
 
   let createDotEnvsDirectory _ =
-    (commandContext.ProjectPath, "dotenvs")
-    |> System.IO.Path.Combine
+    "dotenvs"
+    |> File.combinePaths commandContext.ProjectPath
     |> FileHelpers.whenFileOrDirectoryIsMissing (fun (fullPath: string) ->
-      fullPath |> System.IO.Directory.CreateDirectory |> ignore
-      Ok(sprintf "`%s` created" fullPath))
+      Ok(sprintf "`%s` created" (File.createDirectory fullPath).FullName))
 
   let createDotEnv _ =
-    (commandContext.ProjectPath, "dotenvs", ".env.main")
-    |> System.IO.Path.Combine
+    ".env.main"
+    |> File.combinePaths3 commandContext.ProjectPath "dotenvs"
     |> FileHelpers.whenFileOrDirectoryIsMissing (fun (fullPath: string) ->
       // TODO: Copy .env if possible.
       use stream: System.IO.StreamWriter = System.IO.File.CreateText fullPath
@@ -31,12 +24,12 @@ let init (commandContext: CommandContext) : Result<string, string> =
       Ok(sprintf "`%s` created" fullPath))
 
   let createInternalSymLink _ =
-    let path: string = FileHelpers.projectPathTo commandContext [ ".env.current" ]
-
     let targetPath: string =
       FileHelpers.projectPathTo commandContext [ "dotenvs"; ".env.main" ]
 
-    FileHelpers.createSymbolicLinkIfMissing path targetPath
+    [ ".env.current" ]
+    |> FileHelpers.projectPathTo commandContext
+    |> FileHelpers.createSymbolicLinkIfMissing targetPath
     |> Result.bind (fun (fileInfo: System.IO.FileSystemInfo) -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
 
   let createSymLinkInProject _ =
@@ -95,7 +88,7 @@ let buildListArgs (limit: int) (sortColString: string) (sortDirString: string) :
 
 /// Lists dotenv files for the forward operating base with support for sorting.
 /// The "current" dotenv is highlighted.
-let list (commandContext: CommandContext) (listParams: ListArgs) =
+let list (commandContext: CommandContext.FileCommandContext) (listParams: ListArgs) =
   let flip = fun func (lhs: 'b) (rhs: 'a) -> func rhs lhs
 
   let colFunc =
@@ -110,8 +103,8 @@ let list (commandContext: CommandContext) (listParams: ListArgs) =
     | Asc -> colFunc
     | Desc -> flip colFunc
 
-  let asDotenv (context: FileHelpers.CommandFileContext) (info: System.IO.FileSystemInfo) =
-    { ListEntry.Name = FileHelpers.asEnvName info.Name
+  let asDotenv (context: CommandContext.FileCommandContext) (info: System.IO.FileSystemInfo) =
+    { ListEntry.Name = (File.fileName info.Name).Replace(".env.", "")
       ListEntry.FullName = info.FullName
       ListEntry.IsCurrent = FileHelpers.isCurrentEnvByPath context info.FullName
       ListEntry.CreationTime = info.CreationTime
@@ -122,12 +115,12 @@ let list (commandContext: CommandContext) (listParams: ListArgs) =
     let fileList: System.IO.FileSystemInfo list =
       [ "dotenvs" ]
       |> FileHelpers.projectPathTo commandContext
-      |> FileHelpers.getFileInfos
+      |> File.directoryFileInfos
 
     fileList
     |> List.map (asDotenv commandContext)
     |> List.sortWith comparer
-    |> List.take (clamp 0 fileList.Length listParams.Limit)
+    |> List.take (Math.clamp 0 fileList.Length listParams.Limit)
     |> Ok
   with :? System.IO.DirectoryNotFoundException ->
     Error(sprintf "Project `%s` not found; run fwd init or provide a project name." commandContext.ProjectName)
@@ -136,14 +129,12 @@ type SwitchMode =
   | Create
   | ReadOnly
 
-type SwitchArgs = { Name: string; Mode: SwitchMode }
-
 /// Switch the dotenv file, either to an existing one or by creating a new one.
-let switch (commandContext: CommandContext) (switchArgs: SwitchArgs) =
+let switch (commandContext: CommandContext.FileCommandContext) (name: string) (mode: SwitchMode) =
   let currentPath: string =
     FileHelpers.projectPathTo commandContext [ ".env.current" ]
 
-  let targetPath: string = FileHelpers.dotenvPath commandContext switchArgs.Name
+  let targetPath: string = FileHelpers.dotenvPath commandContext name
 
   let touchExisting _ =
     match FileHelpers.actualPathToCurrentEnv commandContext with
@@ -152,7 +143,7 @@ let switch (commandContext: CommandContext) (switchArgs: SwitchArgs) =
 
   let replaceInternalSymLink _ =
     touchExisting () |> ignore
-    System.IO.File.Delete(currentPath)
+    currentPath |> File.deleteFile |> ignore
     System.IO.File.SetLastWriteTimeUtc(targetPath, System.DateTime.UtcNow)
 
     FileHelpers.createSymbolicLinkIfMissing currentPath targetPath
@@ -165,39 +156,28 @@ let switch (commandContext: CommandContext) (switchArgs: SwitchArgs) =
 
     replaceInternalSymLink ()
 
-  match switchArgs.Mode, FileHelpers.fileOrDirectoryExists targetPath with
-  | Create, true -> Error(sprintf "Cannot create `%s`; it already exists" switchArgs.Name)
+  match mode, File.exists targetPath with
+  | Create, true -> Error(sprintf "Cannot create `%s`; it already exists" name)
   | Create, false -> createDotEnvAndReplaceInternalSymLink ()
   | ReadOnly, true -> replaceInternalSymLink ()
-  | ReadOnly, false -> Error(sprintf "Cannot switch to `%s`; it does not exist" switchArgs.Name)
-
-type RemoveArgs = { Name: string }
+  | ReadOnly, false -> Error(sprintf "Cannot switch to `%s`; it does not exist" name)
 
 /// Removes the dotenv file from the project.
-let remove (commandContext: CommandContext) (removeArgs: RemoveArgs) =
-  let fullPath: string = FileHelpers.dotenvPath commandContext removeArgs.Name
-  let exists: bool = FileHelpers.fileOrDirectoryExists fullPath
+let remove (commandContext: CommandContext.FileCommandContext) (dotEnvName: string) =
+  let fullPath: string = FileHelpers.dotenvPath commandContext dotEnvName
+  let exists: bool = File.exists fullPath
   let isCurrent = FileHelpers.isCurrentEnvByPath commandContext fullPath
 
   match (exists, isCurrent) with
-  | (_, true) -> Error(sprintf "Cannot remove `%s` since it is the current dotenv." removeArgs.Name)
-  | (false, _) -> Error(sprintf "Unable to find dotenv `%s` in the current project" removeArgs.Name)
-  | (true, _) ->
-    System.IO.File.Delete fullPath
-    Ok fullPath
+  | (_, true) -> Error(sprintf "Cannot remove `%s` since it is the current dotenv." dotEnvName)
+  | (false, _) -> Error(sprintf "Unable to find dotenv `%s` in the current project" dotEnvName)
+  | (true, _) -> File.deleteFile fullPath
 
-type ExplainOutput =
-  { RootPath: string
-    ProjectName: string
-    ProjectPath: string
-    DotEnvSymLinkPath: option<string>
-    DotEnvPath: option<string> }
-
-let explain (commandContext: CommandContext) =
+let explain (commandContext: CommandContext.FileCommandContext) : Result<CommandContext.DotEnvCommandContext, string> =
   let maybePathToSymLink = FileHelpers.projectPathTo commandContext [ ".env.current" ]
 
   let pathToSymLink =
-    match System.IO.File.Exists maybePathToSymLink with
+    match File.exists maybePathToSymLink with
     | true -> Some maybePathToSymLink
     | false -> None
 
@@ -212,7 +192,3 @@ let explain (commandContext: CommandContext) =
       ProjectPath = commandContext.ProjectPath
       DotEnvSymLinkPath = pathToSymLink
       DotEnvPath = actualPathToCurrentDotEnv }
-
-type MoveArgs = { name: string; nextName: string }
-
-let move (moveArgs: MoveArgs) = Error "Not implemented"
