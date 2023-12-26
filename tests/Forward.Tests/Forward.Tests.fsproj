@@ -9,6 +9,7 @@
     <Compile Include="CommandContextTests.fs" />
     <Compile Include="ProjectTests.fs" />
     <Compile Include="FileHelpersTests.fs" />
+    <Compile Include="Prelude/RegexTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

@@ -9,6 +9,7 @@
     <Compile Include="Math.fs" />
     <Compile Include="Environment.fs" />
     <Compile Include="File.fs" />
+    <Compile Include="Regex.fs" />
   </ItemGroup>
 
 </Project>
