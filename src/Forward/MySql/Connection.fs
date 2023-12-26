@@ -14,6 +14,10 @@ type ConnectionWithConfig =
   { Conn: MySqlConnection
     Config: ConnectionConfig }
 
+let private passwordPatterns: string list =
+  [ @"^password='((\w|\s|[.!$*!&@#$%^])+)'$"
+    @"^password=((\w|[.!$*!&@#$%^])+)$" ]
+
 let private readFileLinesIntoList (path: string) =
   path |> File.readFileLinesIn |> List.ofArray
 
@@ -22,8 +26,19 @@ let private tryFirstMatch (pattern: string) (lines: string list) =
   |> List.tryFind (Regex.isMatch pattern)
   |> Option.bind (Regex.testTryGetFirstGroupMatch pattern)
 
+let private tryFirstMatchOfList (patterns: string list) (lines: string list) =
+  let matchingPattern =
+    patterns
+    |> List.tryFind (fun pattern ->
+      match List.tryFind (Regex.isMatch pattern) lines with
+      | Some(_) -> true
+      | None -> false)
+
+  matchingPattern
+  |> Option.bind (fun (pattern: string) -> tryFirstMatch pattern lines)
+
 let private makeErrorString (user: string option) (password: string option) (dbName: string option) =
-  let mutable messageParts = []
+  let mutable messageParts: string list = []
 
   if None = user then
     messageParts <- "Cannot extract username from MySQL option file(s)." :: messageParts
@@ -42,7 +57,7 @@ let buildConfig (getVariable: (string) -> string option) (files: string list) =
   try
     let lines: string list = files |> List.map readFileLinesIntoList |> List.concat
     let userOpt: string option = tryFirstMatch @"^user=(\w+)$" lines
-    let passwordOpt: string option = tryFirstMatch @"^password=(\w+)$" lines
+    let passwordOpt: string option = tryFirstMatchOfList passwordPatterns lines
     let dbNameOpt: string option = getVariable "DB_NAME"
 
     let host: string =
