@@ -9,6 +9,7 @@
     <Compile Include="Processes.fs" />
     <Compile Include="MySqlHelpers.fs" />
     <Compile Include="Project.fs" />
+    <Compile Include="MySql/Connection.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Prelude\Prelude.fsproj" />
