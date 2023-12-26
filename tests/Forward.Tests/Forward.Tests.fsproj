@@ -10,6 +10,7 @@
     <Compile Include="CommandContextTests.fs" />
     <Compile Include="ProjectTests.fs" />
     <Compile Include="FileHelpersTests.fs" />
+    <Compile Include="Prelude/EnvironmentTests.fs" />
     <Compile Include="Prelude/FileTests.fs" />
     <Compile Include="Prelude/RegexTests.fs" />
     <Compile Include="Forward/MySql/ConnectionTests.fs" />
