@@ -6,6 +6,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="LibTest/AssertionExtensions.fs" />
     <Compile Include="CommandContextTests.fs" />
     <Compile Include="ProjectTests.fs" />
     <Compile Include="FileHelpersTests.fs" />

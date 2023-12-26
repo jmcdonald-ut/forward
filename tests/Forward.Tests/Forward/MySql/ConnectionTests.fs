@@ -2,6 +2,7 @@ module Forward.Tests.Forward.MySql.ConnectionTests
 
 open NUnit.Framework
 open Forward.MySql.Connection
+open Forward.Tests.LibTest.AssertionExtensions
 
 [<TestFixture>]
 type BuildConfigTests() =
@@ -42,12 +43,10 @@ type BuildConfigTests() =
         DbName = "testDb"
         Host = "db.host.mysql.com" }
 
-    let expected: Result<ConnectionConfig, string> = Ok(expectedConfig)
-
     let actual: Result<ConnectionConfig, string> =
       buildConfig getVariable [ fullOptionsFile ]
 
-    Assert.That(actual, Is.EqualTo(expected))
+    Assert.Result(actual).IsOkWith(expectedConfig)
 
   [<Test>]
   member this.testValidInputSpreadAcrossOptionsFiles() =
@@ -57,12 +56,10 @@ type BuildConfigTests() =
         DbName = "testDb"
         Host = "db.host.mysql.com" }
 
-    let expected: Result<ConnectionConfig, string> = Ok(expectedConfig)
-
     let actual: Result<ConnectionConfig, string> =
       buildConfig getVariable [ userOnlyOptionsFile; passwordOnlyOptionsFile ]
 
-    Assert.That(actual, Is.EqualTo(expected))
+    Assert.Result(actual).IsOkWith(expectedConfig)
 
   [<Test>]
   member this.testValidInputAndManyFilesUsesFirstMatches() =
@@ -72,8 +69,6 @@ type BuildConfigTests() =
         DbName = "testDb"
         Host = "db.host.mysql.com" }
 
-    let expected: Result<ConnectionConfig, string> = Ok(expectedConfig)
-
     let actual: Result<ConnectionConfig, string> =
       buildConfig
         getVariable
@@ -82,16 +77,13 @@ type BuildConfigTests() =
           passwordOnlyOptionsFile
           noClientOptionsFile ]
 
-    Assert.That(actual, Is.EqualTo(expected))
+    Assert.Result(actual).IsOkWith(expectedConfig)
 
   [<Test>]
   member this.testInvalidFileReturnsError() =
     let invalidPath: string = File.combinePaths forwardFiles.FullName "some.bad.cnf"
 
-    let expected: Result<ConnectionConfig, string> =
-      Error(sprintf "%s cannot be found." invalidPath)
-
     let actual: Result<ConnectionConfig, string> =
       buildConfig getVariable [ invalidPath ]
 
-    Assert.That(actual, Is.EqualTo(expected))
+    Assert.Result(actual).IsErrorWith(sprintf "%s cannot be found." invalidPath)
