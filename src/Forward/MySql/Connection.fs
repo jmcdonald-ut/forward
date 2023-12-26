@@ -10,6 +10,10 @@ type ConnectionConfig =
     Host: string
     DbName: string }
 
+type ConnectionWithConfig =
+  { Conn: MySqlConnection
+    Config: ConnectionConfig }
+
 let private readFileLinesIntoList (path: string) =
   path |> File.readFileLinesIn |> List.ofArray
 
@@ -57,3 +61,36 @@ let buildConfig (getVariable: (string) -> string option) (files: string list) =
     | _ -> Error(makeErrorString userOpt passwordOpt dbNameOpt)
   with :? System.IO.FileNotFoundException as notFound ->
     Error(sprintf "%s cannot be found." notFound.FileName)
+
+/// Builds a MySQL connection from an internal ConnectionConfig record.
+let buildConnectionFromConfig (config: ConnectionConfig) =
+  let builder: MySqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
+  builder.UserID <- config.User
+  builder.Password <- config.Password
+  builder.Database <- config.DbName
+  builder.Server <- config.Host
+  let conn: MySqlConnection = new MySqlConnection(builder.ToString())
+  conn.Open()
+  { Conn = conn; Config = config }
+
+/// Tries to build a MySQL connection by first building a config; returns a
+/// result. Note that this may still throw.
+let tryBuildConnection (getVariable: (string) -> string option) (files: string list) =
+  match buildConfig getVariable files with
+  | Ok(config) -> config |> buildConnectionFromConfig |> Ok
+  | Error(reason) -> Error(reason)
+
+/// Builds a MySQL connection or raises on any failure.
+let buildConnection (getVariable: (string) -> string option) (files: string list) =
+  match tryBuildConnection getVariable files with
+  | Ok(conn) -> conn
+  | Error(reason) -> failwith reason
+
+let optionFiles () =
+  let home = Environment.getEnvironmentVariable "HOME"
+
+  [ "/etc/my.cnf"
+    "/etc/mysql/my.cnf"
+    File.joinPaths home ".my.cnf"
+    File.joinPaths home ".mylogin.cnf" ]
+  |> List.filter File.exists

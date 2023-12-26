@@ -2,8 +2,10 @@ module ForwardCli.Db
 
 open Argu
 open dotenv.net
+open Spectre.Console
 
 open Forward
+open ForwardCli.OutputResult
 
 // This is used by both `fwd backup` and `fwd restore`.
 type DbArgs =
@@ -49,3 +51,26 @@ let doDbCommand (dbCommand: DbCommandFun) (cmdCtxt: CommandContext.FileCommandCo
 let handleBackupCommand = doDbCommand MySqlHelpers.backupDb
 
 let handleRestoreCommand = doDbCommand MySqlHelpers.restoreDb
+
+let private useEnv (cmdCtxt: CommandContext.FileCommandContext) =
+  match FileHelpers.actualPathToCurrentEnv cmdCtxt with
+  | Ok(path) -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path.FullName ]))
+  | Error(_) -> ()
+
+let handleCountsCommand (cmdCtxt: CommandContext.FileCommandContext) =
+  useEnv cmdCtxt
+
+  let folder (table: Table) (item: Forward.MySql.Counts.CountEntry) =
+    let label: string = item.TableName
+    let count: int64 = item.Count
+    table.AddRow(label, count.ToString())
+
+  let handleListCommandSuccess (rows: Forward.MySql.Counts.CountEntry seq) =
+    TableResult(makeTableResult [| "Table"; "Row Count" |] folder (List.ofSeq rows))
+
+  MySql.Connection.optionFiles ()
+  |> MySql.Connection.buildConnection Environment.getEnvironmentVariableOpt
+  |> MySql.Counts.allTableCountsTask
+  |> Async.AwaitTask
+  |> Async.RunSynchronously
+  |> handleListCommandSuccess
