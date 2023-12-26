@@ -1,4 +1,4 @@
-module Forward.Tests.FileHelpersTests
+module Forward.Tests.Forward.FileHelpersTests
 
 open NUnit.Framework
 open Forward.FileHelpers

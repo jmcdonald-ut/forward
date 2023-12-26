@@ -1,9 +1,9 @@
-module Forward.Tests.ProjectTests
+module Forward.Tests.Forward.CommandContextTests
 
-open NUnit.Framework
 open System.IO
+open NUnit.Framework
 
-open Forward.Project
+open Forward.CommandContext
 
 [<TestFixture>]
 type Tests() =
@@ -35,16 +35,23 @@ type Tests() =
     Environment.setEnvironmentVariable "FORWARD_PROJECT_NAME" priorProjectName
 
   [<Test>]
-  member this.testInitIsolated() =
-    let context: Forward.CommandContext.FileCommandContext =
-      { ProjectName = "testInitIsolated"
-        ProjectArtifactsPath = Path.Join([| projectsRoot.FullName; "testInitIsolated" |])
-        RootPath = forwardRoot.FullName
-        ProjectPath = projectRoot.FullName }
+  member this.testContextWithoutProjectBuildReturnsRecord() =
+    let expected = { RootPath = "/home/.forward" }
+    let actual = ContextWithoutProject.Build("/home/.forward")
 
-    let expectedPath: string = File.combinePaths projectRoot.FullName ".env"
+    Assert.That(actual, Is.EqualTo(expected))
 
-    let expected: string = sprintf "`%s` symlink created" expectedPath
-    let actual: string = context |> init |> Result.defaultValue "FAIL"
+  [<Test>]
+  member this.testContextWithPotentialProjectBuildWithProject() =
+    let actual =
+      ContextWithPotentialProject.Build(forwardRoot.FullName, projectRoot.Name)
+
+    let expected: ContextWithPotentialProject =
+      { RootPath = forwardRoot.FullName
+        ProjectName = projectRoot.Name
+        ProjectArtifactsPath = File.joinPaths forwardRoot.FullName projectRoot.Name
+        ProjectPath = None
+        DotEnvSymLinkPath = None
+        DotEnvPath = None }
 
     Assert.That(actual, Is.EqualTo(expected))

@@ -7,12 +7,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="LibTest/AssertionExtensions.fs" />
-    <Compile Include="CommandContextTests.fs" />
-    <Compile Include="ProjectTests.fs" />
-    <Compile Include="FileHelpersTests.fs" />
     <Compile Include="Prelude/EnvironmentTests.fs" />
     <Compile Include="Prelude/FileTests.fs" />
     <Compile Include="Prelude/RegexTests.fs" />
+    <Compile Include="Forward/CommandContextTests.fs" />
+    <Compile Include="Forward/ProjectTests.fs" />
+    <Compile Include="Forward/FileHelpersTests.fs" />
     <Compile Include="Forward/MySql/ConnectionTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
