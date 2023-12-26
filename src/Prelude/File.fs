@@ -46,3 +46,8 @@ let deleteFile (path: string) =
     Ok path
   with :? SystemException as ex ->
     Error ex.Message
+
+let readFileIn (path: string) = IO.File.ReadAllText path
+let readFileLinesIn (path: string) = IO.File.ReadAllLines path
+
+let writeText (text: string) (path: string) = IO.File.WriteAllText(path, text)
