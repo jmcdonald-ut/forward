@@ -15,7 +15,7 @@ type BackupContext =
 
 let private findOrCreateMysqlBackupsDirectory (commandContext: CommandContext.FileCommandContext) =
   "mysql_backups"
-  |> File.joinPaths commandContext.ProjectPath
+  |> File.joinPaths commandContext.ProjectArtifactsPath
   |> File.createDirectory
   |> _.FullName
 

@@ -21,6 +21,7 @@ type RootArgs =
   | [<CliPrefix(CliPrefix.None); CustomCommandLine("rm")>] Remove of ParseResults<RemoveArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("s")>] Switch of ParseResults<SwitchArgs>
   | [<CliPrefix(CliPrefix.DoubleDash)>] Project of string
+  | [<CliPrefix(CliPrefix.DoubleDash)>] Project_Path of string
   | [<CliPrefix(CliPrefix.DoubleDash)>] Root of string
   | [<CliPrefix(CliPrefix.DoubleDash)>] Squelch
   | [<CliPrefix(CliPrefix.DoubleDash)>] Format of OutputFormat
@@ -38,6 +39,7 @@ type RootArgs =
       | Switch _ -> "switch the project's dotenv file."
       // Shared/Root CLI Args
       | Project _ -> "specify the project name."
+      | Project_Path _ -> "specify the project's directory."
       | Root _ -> "specify the path to `fwd` artifacts."
       | Squelch -> "squelch errors"
       | Format _ -> "format"
@@ -104,10 +106,11 @@ let private parseAndExecuteCommand (argv: string[]) =
   let rootArgs: ParseResults<RootArgs> = parseCommandLine argv
   let format: OutputFormat = rootArgs.GetResult(Format, Standard)
   let maybeProjectName: string option = rootArgs.TryGetResult(Project)
+  let maybeProjectPath: string option = rootArgs.TryGetResult(Project_Path)
   let maybeRootPath: string option = rootArgs.TryGetResult(Root)
   let squelchError: bool = rootArgs.Contains(Squelch)
 
-  match Forward.CommandContext.buildFileCommandContext maybeRootPath maybeProjectName with
+  match Forward.CommandContext.buildFileCommandContext maybeRootPath maybeProjectName maybeProjectPath with
   | Ok(context) -> routeCommand rootArgs format context
   | Error(reason) -> reason |> ErrorResult |> printAndExit format squelchError
 

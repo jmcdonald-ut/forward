@@ -11,7 +11,7 @@ let getRootPathOpt = CommandContext.getRootPathOpt
 
 /// Path to the given parts nested within the project.
 let projectPathTo (context: CommandContext.FileCommandContext) (parts: string list) =
-  context.ProjectPath :: parts |> List.toArray |> System.IO.Path.Join
+  context.ProjectArtifactsPath :: parts |> List.toArray |> System.IO.Path.Join
 
 /// Returns a full path to the dotenv file.
 let dotenvPath (context: CommandContext.FileCommandContext) (name: string) =

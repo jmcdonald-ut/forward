@@ -18,7 +18,7 @@ fwd ls --help
 #
 # RootPath: Holds all Forward projects.
 # ProjectName: Name of the active Forward project.
-# ProjectPath: Path to the project codebase.
+# ProjectArtifactsPath: Path to Forward's project artifacts.
 # DotEnvSymLinkPath: .env in the codebase points to this.
 # DotEnvPath: Complete path to active .env
 #
@@ -30,7 +30,7 @@ fwd ls --help
 fwd explain
 #=> { RootPath = "/Users/jon/.forward"
 #=>   ProjectName = "rails"
-#=>   ProjectPath = "/Users/jon/.forward/rails"
+#=>   ProjectArtifactsPath = "/Users/jon/.forward/rails"
 #=>   DotEnvSymLinkPath = Some "/Users/jon/.forward/rails/.env.current"
 #=>   DotEnvPath = Some "/Users/jon/.forward/rails/dotenvs/.env.development.fresh" }
 

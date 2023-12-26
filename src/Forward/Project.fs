@@ -4,19 +4,19 @@ module Forward.Project
 /// this re-runs the init logic in a non-destructive manner.
 let init (commandContext: CommandContext.FileCommandContext) : Result<string, string> =
   let createDirectory _ =
-    commandContext.ProjectPath
+    commandContext.ProjectArtifactsPath
     |> FileHelpers.whenFileOrDirectoryIsMissing (fun (path: string) ->
       Ok(sprintf "`%s` created" (File.createDirectory path).FullName))
 
   let createDotEnvsDirectory _ =
     "dotenvs"
-    |> File.combinePaths commandContext.ProjectPath
+    |> File.combinePaths commandContext.ProjectArtifactsPath
     |> FileHelpers.whenFileOrDirectoryIsMissing (fun (fullPath: string) ->
       Ok(sprintf "`%s` created" (File.createDirectory fullPath).FullName))
 
   let createDotEnv _ =
     ".env.main"
-    |> File.combinePaths3 commandContext.ProjectPath "dotenvs"
+    |> File.combinePaths3 commandContext.ProjectArtifactsPath "dotenvs"
     |> FileHelpers.whenFileOrDirectoryIsMissing (fun (fullPath: string) ->
       // TODO: Copy .env if possible.
       use stream: System.IO.StreamWriter = System.IO.File.CreateText fullPath
@@ -33,13 +33,13 @@ let init (commandContext: CommandContext.FileCommandContext) : Result<string, st
     |> Result.bind (fun (fileInfo: System.IO.FileSystemInfo) -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
 
   let createSymLinkInProject _ =
-    let path: string = FileHelpers.currentPathTo [ ".env" ]
+    let path: string = File.combinePaths commandContext.ProjectPath ".env"
     let targetPath: string = FileHelpers.projectPathTo commandContext [ ".env.current" ]
 
     FileHelpers.createSymbolicLinkIfMissing path targetPath
     |> Result.bind (fun (fileInfo: System.IO.FileSystemInfo) -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
 
-  commandContext.ProjectPath
+  commandContext.ProjectArtifactsPath
   |> createDirectory
   |> Result.bind createDotEnvsDirectory
   |> Result.bind createDotEnv
@@ -189,6 +189,6 @@ let explain (commandContext: CommandContext.FileCommandContext) : Result<Command
   Ok
     { RootPath = commandContext.RootPath
       ProjectName = commandContext.ProjectName
-      ProjectPath = commandContext.ProjectPath
+      ProjectArtifactsPath = commandContext.ProjectArtifactsPath
       DotEnvSymLinkPath = pathToSymLink
       DotEnvPath = actualPathToCurrentDotEnv }
