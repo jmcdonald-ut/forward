@@ -1,5 +1,23 @@
 module Forward.Project
 
+open dotenv.net
+
+let listDotEnvs (commandContext: CommandContext.FileCommandContext) =
+  [ "dotenvs" ]
+  |> FileHelpers.projectPathTo commandContext
+  |> File.directoryFileInfos
+
+/// Loads the specified Dotenv file based on the project in context.
+let loadDotEnv (commandContext: CommandContext.FileCommandContext) (name: string) =
+  [ "dotenvs"; name ]
+  |> FileHelpers.projectPathTo commandContext
+  |> (fun path -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path ])))
+
+let loadCurrentDotEnv (commandContext: CommandContext.FileCommandContext) =
+  match FileHelpers.actualPathToCurrentEnv commandContext with
+  | Ok(path: System.IO.FileSystemInfo) -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path.FullName ]))
+  | Error(_) -> ()
+
 /// Initializes a new project if one does't already exist. If one does exist,
 /// this re-runs the init logic in a non-destructive manner.
 let init (commandContext: CommandContext.FileCommandContext) : Result<string, string> =
@@ -112,10 +130,7 @@ let list (commandContext: CommandContext.FileCommandContext) (listParams: ListAr
       ListEntry.LastWriteTime = info.LastWriteTime }
 
   try
-    let fileList: System.IO.FileSystemInfo list =
-      [ "dotenvs" ]
-      |> FileHelpers.projectPathTo commandContext
-      |> File.directoryFileInfos
+    let fileList: System.IO.FileSystemInfo list = listDotEnvs commandContext
 
     fileList
     |> List.map (asDotenv commandContext)

@@ -88,6 +88,18 @@ let buildConnectionFromConfig (config: ConnectionConfig) =
   conn.Open()
   { Conn = conn; Config = config }
 
+let buildConnectionFromConfigTask (config: ConnectionConfig) =
+  task {
+    let builder: MySqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
+    builder.UserID <- config.User
+    builder.Password <- config.Password
+    builder.Database <- config.DbName
+    builder.Server <- config.Host
+    let conn: MySqlConnection = new MySqlConnection(builder.ToString())
+    let! _ = conn.OpenAsync()
+    return { Conn = conn; Config = config }
+  }
+
 /// Tries to build a MySQL connection by first building a config; returns a
 /// result. Note that this may still throw.
 let tryBuildConnection (getVariable: (string) -> string option) (files: string list) =
@@ -101,7 +113,16 @@ let buildConnection (getVariable: (string) -> string option) (files: string list
   | Ok(conn) -> conn
   | Error(reason) -> failwith reason
 
-let optionFiles () =
+let buildConnectionTask (getVariable: (string) -> string option) (files: string list) =
+  task {
+    // Wonder if this is thread safe?
+
+    match buildConfig getVariable files with
+    | Ok(config) -> return! buildConnectionFromConfigTask config
+    | Error(reason) -> return failwith reason
+  }
+
+let optionFiles =
   let home = Environment.getEnvironmentVariable "HOME"
 
   [ "/etc/my.cnf"

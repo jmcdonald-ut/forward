@@ -7,6 +7,10 @@ open Spectre.Console
 open Forward
 open ForwardCli.OutputResult
 
+// Internal "counts" type. This is useful for coercing the output of different
+// count command branches so the F# compiler is appeased.
+type Counts = { Label: string; Counts: string list }
+
 // This is used by both `fwd backup` and `fwd restore`.
 type DbArgs =
   | [<CustomCommandLine("--db-name")>] DbName of string
@@ -16,11 +20,20 @@ type DbArgs =
       match arg with
       | DbName _ -> "database name to backup; falls back to DB_NAME in current .env file"
 
+type DbTableCountsArgs =
+  | [<MainCommand; Last>] Tables of string list
+
+  interface IArgParserTemplate with
+    member arg.Usage =
+      match arg with
+      | Tables _ -> "list of tables to compare per env; omit to print all from current env"
+
 type DbCommandFun = CommandContext.FileCommandContext -> string -> Result<MySqlHelpers.BackupContext, string>
 
 // SUBCOMMANDS
 //   fwd backup
 //   fwd restore
+//   fwd counts [<table>...]
 // ****************************************************************************
 
 let private fallbackToSystemEnv (key: string) =
@@ -50,27 +63,54 @@ let doDbCommand (dbCommand: DbCommandFun) (cmdCtxt: CommandContext.FileCommandCo
 
 let handleBackupCommand = doDbCommand MySqlHelpers.backupDb
 
-let handleRestoreCommand = doDbCommand MySqlHelpers.restoreDb
+let handleRestoreCommand = doDbCommand MySqlHelpers.backupDb
 
-let private useEnv (cmdCtxt: CommandContext.FileCommandContext) =
-  match FileHelpers.actualPathToCurrentEnv cmdCtxt with
-  | Ok(path) -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path.FullName ]))
-  | Error(_) -> ()
+let private runCountsCommand (columns: string array) (bindResult: ('t) -> Counts list) (asyncCommand: Async<'t>) =
+  let folder (table: Table) (item: Counts) =
+    table.AddRow((item.Label :: item.Counts) |> Array.ofList)
 
-let handleCountsCommand (cmdCtxt: CommandContext.FileCommandContext) =
-  useEnv cmdCtxt
+  asyncCommand
+  |> Async.RunSynchronously
+  |> bindResult
+  |> makeTableResult columns folder
+  |> TableResult
 
-  let folder (table: Table) (item: Forward.MySql.Counts.CountEntry) =
-    let label: string = item.TableName
-    let count: int64 = item.Count
-    table.AddRow(label, count.ToString())
+let private doHandleTableBreakdown (commandContext: CommandContext.FileCommandContext) (tableNames: string list) =
+  let columns: string array = "DotEnv" :: tableNames |> Array.ofList
 
-  let handleListCommandSuccess (rows: Forward.MySql.Counts.CountEntry seq) =
-    TableResult(makeTableResult [| "Table"; "Row Count" |] folder (List.ofSeq rows))
+  let bind (rows: Forward.MySql.Counts.DotEnvWithTableCounts array) =
+    rows
+    |> List.ofArray
+    |> List.map (fun e ->
+      { Label = e.DotEnvName
+        Counts = e.TableCounts |> Seq.map _.Count.ToString() |> List.ofSeq })
 
-  MySql.Connection.optionFiles ()
+  tableNames
+  |> MySql.Counts.collectTableCountsPerDotEnvAsync commandContext
+  |> runCountsCommand columns bind
+
+let private doHandleAllTableBreakdown (commandContext: CommandContext.FileCommandContext) =
+  Project.loadCurrentDotEnv commandContext
+
+  let columns: string array = [| "Table"; "Row Count" |]
+
+  let bind (rows: Forward.MySql.Counts.CountEntry seq) =
+    rows
+    |> List.ofSeq
+    |> List.map (fun e ->
+      { Label = e.TableName
+        Counts = [ e.Count.ToString() ] })
+
+  MySql.Connection.optionFiles
   |> MySql.Connection.buildConnection Environment.getEnvironmentVariableOpt
   |> MySql.Counts.allTableCountsTask
   |> Async.AwaitTask
-  |> Async.RunSynchronously
-  |> handleListCommandSuccess
+  |> runCountsCommand columns bind
+
+let handleOtherCountsCommand
+  (commandContext: CommandContext.FileCommandContext)
+  (args: ParseResults<DbTableCountsArgs>)
+  : CommandResult<Counts> =
+  match args.TryGetResult(Tables) with
+  | None -> doHandleAllTableBreakdown commandContext
+  | Some(tableNames) -> doHandleTableBreakdown commandContext tableNames

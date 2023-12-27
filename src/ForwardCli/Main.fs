@@ -15,7 +15,7 @@ type RootArgs =
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Explain
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Config of ParseResults<ConfigArgs>
-  | [<SubCommand; CliPrefix(CliPrefix.None)>] Counts
+  | [<SubCommand; CliPrefix(CliPrefix.None)>] Counts of ParseResults<DbTableCountsArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup of ParseResults<DbArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Restore of ParseResults<DbArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("ls")>] List of ParseResults<ListArgs>
@@ -32,7 +32,7 @@ type RootArgs =
       match arg with
       | Backup _ -> "backs up a DB."
       | Config _ -> "gets or sets variables in dotenv file."
-      | Counts -> "gets table counts"
+      | Counts _ -> "gets other table counts"
       | Explain -> "explains the current context."
       | Init -> "initialize a project."
       | List _ -> "list project dotenv files."
@@ -97,7 +97,7 @@ let routeCommand
   | Some(Backup(args)) -> args |> handleBackupCommand context |> doPrintAndExit
   | Some(Config(args)) -> args |> handleConfigCommand context |> doPrintAndExit
   | Some(Explain) -> context |> handleExplainCommand |> doPrintAndExit
-  | Some(Counts) -> context |> handleCountsCommand |> doPrintAndExit
+  | Some(Counts(args)) -> args |> handleOtherCountsCommand context |> doPrintAndExit
   | Some(Init) -> context |> handleInitCommand |> doPrintAndExit
   | Some(List(args)) -> args |> handleListCommand context |> doPrintAndExit
   | Some(Remove(args)) -> args |> handleRemoveCommand context |> doPrintAndExit
