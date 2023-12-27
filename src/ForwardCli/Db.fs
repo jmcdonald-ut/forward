@@ -83,7 +83,11 @@ let private doHandleTableBreakdown (commandContext: CommandContext.FileCommandCo
     |> List.ofArray
     |> List.map (fun e ->
       { Label = e.DotEnvName
-        Counts = e.TableCounts |> Seq.map _.Count.ToString() |> List.ofSeq })
+        Counts =
+          e.TableCounts
+          |> Seq.sortBy (fun entry -> List.findIndex (fun tName -> tName = entry.TableName) tableNames)
+          |> Seq.map (fun entry -> sprintf "%i" entry.Count)
+          |> List.ofSeq })
 
   tableNames
   |> MySql.Counts.collectTableCountsPerDotEnvAsync commandContext
@@ -99,7 +103,7 @@ let private doHandleAllTableBreakdown (commandContext: CommandContext.FileComman
     |> List.ofSeq
     |> List.map (fun e ->
       { Label = e.TableName
-        Counts = [ e.Count.ToString() ] })
+        Counts = [ (sprintf "%i" e.Count) ] })
 
   MySql.Connection.optionFiles
   |> MySql.Connection.buildConnection Environment.getEnvironmentVariableOpt
