@@ -7,13 +7,11 @@ let isMatch (pattern: string) (input: string) =
   let result = regexMatch pattern input
   result.Success
 
-let anyMatch (patterns: string list) (input: string) =
-  let rec doAnyMatch remaining =
-    match remaining with
-    | [] -> false
-    | pattern :: remaining -> if isMatch pattern input then true else doAnyMatch remaining
-
-  doAnyMatch patterns
+[<TailCall>]
+let rec anyMatch (patterns: string list) (input: string) =
+  match patterns with
+  | [] -> false
+  | pattern :: remaining -> (isMatch pattern input) || (anyMatch remaining input)
 
 let testTryGetNGroupMatch (pattern: string) (input: string) (n: int) =
   let result: System.Text.RegularExpressions.Match =
