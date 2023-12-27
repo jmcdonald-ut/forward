@@ -16,7 +16,6 @@ type RemoveArgs =
 // ****************************************************************************
 
 let handleRemoveCommand (commandContext: CommandContext.FileCommandContext) (removeArgs: ParseResults<RemoveArgs>) =
-  Name
-  |> removeArgs.GetResult
+  removeArgs.GetResult(Name)
   |> Project.remove commandContext
   |> OutputResult.stringResultOf
