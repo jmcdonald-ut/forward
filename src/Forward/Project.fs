@@ -18,6 +18,12 @@ let loadCurrentDotEnv (commandContext: CommandContext.FileCommandContext) =
   | Ok(path: System.IO.FileSystemInfo) -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path.FullName ]))
   | Error(_) -> ()
 
+let readDotEnvAsync (filePath: string) =
+  async {
+    let options: DotEnvOptions = new DotEnvOptions(envFilePaths = [ filePath ])
+    return DotEnv.Read(options)
+  }
+
 /// Initializes a new project if one does't already exist. If one does exist,
 /// this re-runs the init logic in a non-destructive manner.
 let init (commandContext: CommandContext.FileCommandContext) : Result<string, string> =

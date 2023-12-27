@@ -42,36 +42,38 @@ let allTableCountsTask (conn: ConnectionWithConfig) =
           Count = t.table_rows })
   }
 
+let fetchTableCountAsync (conn: MySql.Data.MySqlClient.MySqlConnection) (tableName) =
+  async {
+    let table = table'<Table> tableName
+
+    let! (enumWrappedCount: IEnumerable<{| Value: int64 |}>) =
+      select {
+        for t: Table in table do
+          count "*" "Value"
+      }
+      |> conn.SelectAsync<{| Value: int64 |}>
+      |> Async.AwaitTask
+
+    let wrappedCount = enumWrappedCount |> Seq.toList
+
+    return
+      { TableName = tableName
+        Count = wrappedCount.Head.Value }
+  }
+
 /// Gathers the count of each table in the DB referenced by the DotEnv
 /// file/project.
-let collectDotEnvTableCountsTask (commandContext: FileCommandContext) (dotEnvName: string) (tables: string list) =
-  task {
-    // Load environment variables for the given dotenv file. I'm making an
-    // assumption here that this is safe despite being in a task.
-    Forward.Project.loadDotEnv commandContext dotEnvName
+let collectDotEnvTableCountsTask (tables: string list) ((dotEnvName, connString): (string * string)) =
+  async {
+    use conn: MySql.Data.MySqlClient.MySqlConnection =
+      new MySql.Data.MySqlClient.MySqlConnection(connString)
 
-    let getVariable = Environment.getEnvironmentVariableOpt
-    let! (conn: ConnectionWithConfig) = buildConnectionTask getVariable optionFiles
-    let schema: string = conn.Config.DbName
-
-    let! (rawTableCounts: IEnumerable<Table>) =
-      select {
-        for t: Table in informationSchemaTablesTable do
-          where (t.table_schema = schema && isIn t.table_name tables)
-          orderByDescending t.table_rows
-      }
-      |> conn.Conn.SelectAsync<Table>
-
-    let tableCounts =
-      rawTableCounts
-      |> Seq.cast<Table>
-      |> Seq.map (fun (t: Table) ->
-        { TableName = t.table_name
-          Count = t.table_rows })
+    let! _ = conn.OpenAsync() |> Async.AwaitTask
+    let! (rawTableCounts: CountEntry array) = tables |> List.map (fetchTableCountAsync conn) |> Async.Sequential
 
     return
       { DotEnvName = dotEnvName
-        TableCounts = tableCounts }
+        TableCounts = rawTableCounts }
   }
 
 /// Returns a list of table counts for each dotenv which provides DB_NAME.
@@ -83,15 +85,18 @@ let collectTableCountsPerDotEnvAsync (commandContext: FileCommandContext) (table
 
       DotEnv.Read(options).ContainsKey("DB_NAME")
 
-    let kickOffCountTask (dotEnvFile: System.IO.FileSystemInfo) =
-      tables
-      |> collectDotEnvTableCountsTask commandContext dotEnvFile.Name
-      |> Async.AwaitTask
-
-    return!
+    // Loading environment variables is not thread safe, so this doesn't load
+    // DotEnv files into the environment. Instead, we load the DotEnv files into
+    // Dicts and reference them directly.
+    let! (envConnStringPairs: (string * string) array) =
       commandContext
       |> Forward.Project.listDotEnvs
       |> List.filter hasDbName
-      |> List.map kickOffCountTask
-      |> Async.Parallel
+      |> prepareManyConnectionStringsAsync
+
+    let spawnCountTask = collectDotEnvTableCountsTask tables
+
+    // Wait for all connection strings to be extracted, and then kick off
+    // extracting counts.
+    return! envConnStringPairs |> Array.map spawnCountTask |> Async.Parallel
   }

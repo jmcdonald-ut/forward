@@ -115,18 +115,61 @@ let buildConnection (getVariable: (string) -> string option) (files: string list
 
 let buildConnectionTask (getVariable: (string) -> string option) (files: string list) =
   task {
-    // Wonder if this is thread safe?
-
     match buildConfig getVariable files with
     | Ok(config) -> return! buildConnectionFromConfigTask config
     | Error(reason) -> return failwith reason
   }
 
-let optionFiles =
-  let home = Environment.getEnvironmentVariable "HOME"
+let optionFiles: string list =
+  let home: string = Environment.getEnvironmentVariable "HOME"
 
   [ "/etc/my.cnf"
     "/etc/mysql/my.cnf"
     File.joinPaths home ".my.cnf"
     File.joinPaths home ".mylogin.cnf" ]
   |> List.filter File.exists
+
+let prepareSingleConnectionStringAsync
+  (user: string)
+  (password: string)
+  (host: string)
+  (dotEnvFile: System.IO.FileSystemInfo)
+  =
+  async {
+    let! (dict: System.Collections.Generic.IDictionary<string, string>) =
+      Forward.Project.readDotEnvAsync dotEnvFile.FullName
+
+    let builder: MySqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
+    builder.UserID <- user
+    builder.Password <- password
+    builder.Database <- dict["DB_NAME"]
+    builder.Server <- host
+    return (System.Text.RegularExpressions.Regex.Replace(dotEnvFile.Name, @"/^\.env\./", ""), builder.ToString())
+  }
+
+let prepareManyConnectionStringsAsync (dotEnvFiles: System.IO.FileSystemInfo list) =
+  async {
+    // Load values that we don't derive from per DotEnv file. Do this prior to
+    // splitting up work.
+    let lines: string list =
+      optionFiles |> List.map readFileLinesIntoList |> List.concat
+
+    let userOpt: string option = tryFirstMatch @"^user=(\w+)$" lines
+    let passwordOpt: string option = tryFirstMatchOfList passwordPatterns lines
+
+    let host: string =
+      match Environment.getEnvironmentVariableOpt "DB_HOST" with
+      | Some(string) -> string
+      | None -> "127.0.0.1"
+
+    let (user, password) =
+      match (userOpt, passwordOpt) with
+      | (Some(user), Some(password)) -> (user, password)
+      | (None, None) -> failwith "Unable to extract MySQL username or password"
+      | (None, _) -> failwith "Unable to extract MySQL username"
+      | (_, None) -> failwith "Unable to extract MySQL password"
+
+    let prepareConnString = prepareSingleConnectionStringAsync user password host
+
+    return! dotEnvFiles |> List.map prepareConnString |> Async.Parallel
+  }
