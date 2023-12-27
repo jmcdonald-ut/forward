@@ -17,10 +17,6 @@ let projectPathTo (context: CommandContext.FileCommandContext) (parts: string li
 let dotenvPath (context: CommandContext.FileCommandContext) (name: string) =
   projectPathTo context [ "dotenvs"; ".env." + name ]
 
-/// The path to the parts within the current directory.
-let currentPathTo (parts: string list) =
-  Environment.currentDirectory () :: parts |> List.toArray |> System.IO.Path.Join
-
 /// File info of the underlying dotenv file as a result.
 let actualPathToCurrentEnv (context: CommandContext.FileCommandContext) =
   let info: System.IO.FileSystemInfo =

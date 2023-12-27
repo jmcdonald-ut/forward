@@ -7,12 +7,6 @@ let listDotEnvs (commandContext: CommandContext.FileCommandContext) =
   |> FileHelpers.projectPathTo commandContext
   |> File.directoryFileInfos
 
-/// Loads the specified Dotenv file based on the project in context.
-let loadDotEnv (commandContext: CommandContext.FileCommandContext) (name: string) =
-  [ "dotenvs"; name ]
-  |> FileHelpers.projectPathTo commandContext
-  |> (fun path -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path ])))
-
 let loadCurrentDotEnv (commandContext: CommandContext.FileCommandContext) =
   match FileHelpers.actualPathToCurrentEnv commandContext with
   | Ok(path: System.IO.FileSystemInfo) -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path.FullName ]))

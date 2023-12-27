@@ -1,7 +1,5 @@
 module Forward.MySql.Connection
 
-open Dapper.FSharp
-open Dapper.FSharp.MySQL
 open MySql.Data.MySqlClient
 
 type ConnectionConfig =
@@ -88,18 +86,6 @@ let buildConnectionFromConfig (config: ConnectionConfig) =
   conn.Open()
   { Conn = conn; Config = config }
 
-let buildConnectionFromConfigTask (config: ConnectionConfig) =
-  task {
-    let builder: MySqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
-    builder.UserID <- config.User
-    builder.Password <- config.Password
-    builder.Database <- config.DbName
-    builder.Server <- config.Host
-    let conn: MySqlConnection = new MySqlConnection(builder.ToString())
-    let! _ = conn.OpenAsync()
-    return { Conn = conn; Config = config }
-  }
-
 /// Tries to build a MySQL connection by first building a config; returns a
 /// result. Note that this may still throw.
 let tryBuildConnection (getVariable: (string) -> string option) (files: string list) =
@@ -112,13 +98,6 @@ let buildConnection (getVariable: (string) -> string option) (files: string list
   match tryBuildConnection getVariable files with
   | Ok(conn) -> conn
   | Error(reason) -> failwith reason
-
-let buildConnectionTask (getVariable: (string) -> string option) (files: string list) =
-  task {
-    match buildConfig getVariable files with
-    | Ok(config) -> return! buildConnectionFromConfigTask config
-    | Error(reason) -> return failwith reason
-  }
 
 let optionFiles: string list =
   let home: string = Environment.getEnvironmentVariable "HOME"
@@ -143,6 +122,7 @@ let prepareSingleConnectionStringAsync
     builder.UserID <- user
     builder.Password <- password
     builder.Database <- dict["DB_NAME"]
+    builder.CacheServerProperties <- true
     builder.Server <- host
     return (System.Text.RegularExpressions.Regex.Replace(dotEnvFile.Name, @"/^\.env\./", ""), builder.ToString())
   }
