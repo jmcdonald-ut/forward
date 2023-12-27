@@ -44,21 +44,24 @@ let allTableCountsTask (conn: ConnectionWithConfig) =
 
 let fetchTableCountAsync (conn: MySql.Data.MySqlClient.MySqlConnection) (tableName) =
   async {
-    let table = table'<Table> tableName
+    try
+      let table = table'<Table> tableName
 
-    let! (enumWrappedCount: IEnumerable<{| Value: int64 |}>) =
-      select {
-        for t: Table in table do
-          count "*" "Value"
-      }
-      |> conn.SelectAsync<{| Value: int64 |}>
-      |> Async.AwaitTask
+      let! (enumWrappedCount: IEnumerable<{| Value: int64 |}>) =
+        select {
+          for t: Table in table do
+            count "*" "Value"
+        }
+        |> conn.SelectAsync<{| Value: int64 |}>
+        |> Async.AwaitTask
 
-    let wrappedCount = enumWrappedCount |> Seq.toList
+      let wrappedCount = enumWrappedCount |> Seq.toList
 
-    return
-      { TableName = tableName
-        Count = wrappedCount.Head.Value }
+      return
+        { TableName = tableName
+          Count = wrappedCount.Head.Value }
+    with :? System.AggregateException ->
+      return { TableName = tableName; Count = -1 }
   }
 
 /// Gathers the count of each table in the DB referenced by the DotEnv
