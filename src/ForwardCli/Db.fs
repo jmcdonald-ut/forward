@@ -64,7 +64,7 @@ let doDbCommand (dbCommand: DbCommandFun) (cmdCtxt: CommandContext.FileCommandCo
 
 let handleBackupCommand = doDbCommand MySqlHelpers.backupDb
 
-let handleRestoreCommand = doDbCommand MySqlHelpers.backupDb
+let handleRestoreCommand = doDbCommand MySqlHelpers.restoreDb
 
 let private runCountsCommand (columns: string array) (bindResult: ('t) -> Counts list) (asyncCommand: Async<'t>) =
   let folder (table: Table) (item: Counts) =
