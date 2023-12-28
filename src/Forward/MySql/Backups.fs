@@ -122,3 +122,28 @@ let restoreDb (commandContext: CommandContext.FileCommandContext) (dbName: strin
   |> decompressBackup
   |> Result.bind executeMysqlFromBackup
   |> Result.bind removeIntermediateBackup
+
+let backupDbAsync (commandContext: CommandContext.FileCommandContext) (dbName: string) =
+  async { return backupDb commandContext dbName }
+
+let backupAllDbsAsync (commandContext: CommandContext.FileCommandContext) =
+  async {
+    let! (dicts: System.Collections.Generic.IDictionary<string, string> array) =
+      commandContext
+      |> Project.listDotEnvs
+      |> List.map _.FullName
+      |> List.map Project.readDotEnvAsync
+      |> Async.Parallel
+
+    let collectDbName (dict: System.Collections.Generic.IDictionary<string, string>) =
+      if dict.ContainsKey "DB_NAME" then
+        [ dict["DB_NAME"] ]
+      else
+        []
+
+    return!
+      dicts
+      |> Seq.collect collectDbName
+      |> Seq.map (backupDbAsync commandContext)
+      |> Async.Parallel
+  }

@@ -66,6 +66,19 @@ let handleBackupCommand = doDbCommand Backups.backupDb
 
 let handleRestoreCommand = doDbCommand Backups.restoreDb
 
+let handleBackupAllCommand (cmdCtxt: CommandContext.FileCommandContext) =
+  let folder (table: Table) (item: Result<Backups.BackupContext, string>) =
+    match item with
+    | Ok(backupContext) -> table.AddRow([| "Ok"; backupContext.CompressedBackupPath |])
+    | Error(reason) -> table.AddRow([| "Error"; reason |])
+
+  cmdCtxt
+  |> Backups.backupAllDbsAsync
+  |> Async.RunSynchronously
+  |> Seq.toList
+  |> makeTableResult [| ""; "Output" |] folder
+  |> TableResult
+
 let private runCountsCommand (columns: string array) (bindResult: ('t) -> Counts list) (asyncCommand: Async<'t>) =
   let folder (table: Table) (item: Counts) =
     table.AddRow((item.Label :: item.Counts) |> Array.ofList)

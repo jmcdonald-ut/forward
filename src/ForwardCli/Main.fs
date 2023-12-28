@@ -17,6 +17,7 @@ type RootArgs =
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Config of ParseResults<ConfigArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Counts of ParseResults<DbTableCountsArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup of ParseResults<DbArgs>
+  | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup_All
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Restore of ParseResults<DbArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("ls")>] List of ParseResults<ListArgs>
   | [<CliPrefix(CliPrefix.None); CustomCommandLine("rm")>] Remove of ParseResults<RemoveArgs>
@@ -31,6 +32,7 @@ type RootArgs =
     member arg.Usage =
       match arg with
       | Backup _ -> "backs up a DB."
+      | Backup_All -> "backs up all DBs."
       | Config _ -> "gets or sets variables in dotenv file."
       | Counts _ -> "gets other table counts"
       | Explain -> "explains the current context."
@@ -95,6 +97,7 @@ let routeCommand
 
   match rootArgs.TryGetSubCommand() with
   | Some(Backup(args)) -> args |> handleBackupCommand context |> doPrintAndExit
+  | Some(Backup_All) -> context |> handleBackupAllCommand |> doPrintAndExit
   | Some(Config(args)) -> args |> handleConfigCommand context |> doPrintAndExit
   | Some(Explain) -> context |> handleExplainCommand |> doPrintAndExit
   | Some(Counts(args)) -> args |> handleOtherCountsCommand context |> doPrintAndExit
