@@ -7,8 +7,8 @@
     <Compile Include="CommandContext.fs" />
     <Compile Include="FileHelpers.fs" />
     <Compile Include="Processes.fs" />
-    <Compile Include="MySqlHelpers.fs" />
     <Compile Include="Project.fs" />
+    <Compile Include="Helpers/MySqlHelpers.fs" />
     <Compile Include="MySql/Connection.fs" />
     <Compile Include="MySql/Counts.fs" />
   </ItemGroup>

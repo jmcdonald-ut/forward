@@ -5,6 +5,7 @@ open dotenv.net
 open Spectre.Console
 
 open Forward
+open Forward.Helpers
 open ForwardCli.OutputResult
 
 // Internal "counts" type. This is useful for coercing the output of different
