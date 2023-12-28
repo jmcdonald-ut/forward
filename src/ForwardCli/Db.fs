@@ -95,8 +95,6 @@ let private doHandleTableBreakdown (commandContext: CommandContext.FileCommandCo
   |> runCountsCommand columns bind
 
 let private doHandleAllTableBreakdown (commandContext: CommandContext.FileCommandContext) =
-  Project.loadCurrentDotEnv commandContext
-
   let columns: string array = [| "Table"; "Row Count" |]
 
   let bind (rows: Forward.MySql.Counts.CountEntry seq) =
@@ -106,10 +104,8 @@ let private doHandleAllTableBreakdown (commandContext: CommandContext.FileComman
       { Label = e.TableName
         Counts = [ (sprintf "%i" e.Count) ] })
 
-  MySql.Connection.optionFiles
-  |> MySql.Connection.buildConnection Environment.getEnvironmentVariableOpt
-  |> MySql.Counts.allTableCountsTask
-  |> Async.AwaitTask
+  commandContext
+  |> MySql.Counts.revisedAllTableCountsTask
   |> runCountsCommand columns bind
 
 let handleOtherCountsCommand

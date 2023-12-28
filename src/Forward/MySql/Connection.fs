@@ -12,6 +12,8 @@ type ConnectionWithConfig =
   { Conn: MySqlConnection
     Config: ConnectionConfig }
 
+let buildConnection (connectionString: string) = new MySqlConnection(connectionString)
+
 let private passwordPatterns: string list =
   [ @"^password='((\w|\s|[.!$*!&@#$%^])+)'$"
     @"^password=((\w|[.!$*!&@#$%^])+)$" ]
@@ -49,6 +51,15 @@ let private makeErrorString (user: string option) (password: string option) (dbN
 
   String.concat " " messageParts
 
+let buildConnectionString (user: string) (password: string) (host: string) (dbName: string) =
+  let builder: MySqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
+  builder.UserID <- user
+  builder.Password <- password
+  builder.Database <- dbName
+  builder.CacheServerProperties <- true
+  builder.Server <- host
+  builder.ToString()
+
 /// Builds a connection config using a mix of (environment) variables and
 /// startup options extracted from option files.
 let buildConfig (getVariable: (string) -> string option) (files: string list) =
@@ -75,30 +86,6 @@ let buildConfig (getVariable: (string) -> string option) (files: string list) =
   with :? System.IO.FileNotFoundException as notFound ->
     Error(sprintf "%s cannot be found." notFound.FileName)
 
-/// Builds a MySQL connection from an internal ConnectionConfig record.
-let buildConnectionFromConfig (config: ConnectionConfig) =
-  let builder: MySqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
-  builder.UserID <- config.User
-  builder.Password <- config.Password
-  builder.Database <- config.DbName
-  builder.Server <- config.Host
-  let conn: MySqlConnection = new MySqlConnection(builder.ToString())
-  conn.Open()
-  { Conn = conn; Config = config }
-
-/// Tries to build a MySQL connection by first building a config; returns a
-/// result. Note that this may still throw.
-let tryBuildConnection (getVariable: (string) -> string option) (files: string list) =
-  match buildConfig getVariable files with
-  | Ok(config) -> config |> buildConnectionFromConfig |> Ok
-  | Error(reason) -> Error(reason)
-
-/// Builds a MySQL connection or raises on any failure.
-let buildConnection (getVariable: (string) -> string option) (files: string list) =
-  match tryBuildConnection getVariable files with
-  | Ok(conn) -> conn
-  | Error(reason) -> failwith reason
-
 let optionFiles: string list =
   let home: string = Environment.getEnvironmentVariable "HOME"
 
@@ -107,6 +94,26 @@ let optionFiles: string list =
     File.joinPaths home ".my.cnf"
     File.joinPaths home ".mylogin.cnf" ]
   |> List.filter File.exists
+
+let getUserPasswordHost () =
+  // Load values that we don't derive from per DotEnv file. Do this prior to
+  // splitting up work.
+  let lines: string list =
+    optionFiles |> List.map readFileLinesIntoList |> List.concat
+
+  let userOpt: string option = tryFirstMatch @"^user=(\w+)$" lines
+  let passwordOpt: string option = tryFirstMatchOfList passwordPatterns lines
+
+  let host: string =
+    match Environment.getEnvironmentVariableOpt "DB_HOST" with
+    | Some(string) -> string
+    | None -> "127.0.0.1"
+
+  match (userOpt, passwordOpt) with
+  | (Some(user), Some(password)) -> Ok(user, password, host)
+  | (None, None) -> Error("Unable to extract MySQL username or password")
+  | (None, _) -> Error("Unable to extract MySQL username")
+  | (_, None) -> Error("Unable to extract MySQL password")
 
 let prepareSingleConnectionStringAsync
   (user: string)
@@ -118,36 +125,19 @@ let prepareSingleConnectionStringAsync
     let! (dict: System.Collections.Generic.IDictionary<string, string>) =
       Forward.Project.readDotEnvAsync dotEnvFile.FullName
 
-    let builder: MySqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
-    builder.UserID <- user
-    builder.Password <- password
-    builder.Database <- dict["DB_NAME"]
-    builder.CacheServerProperties <- true
-    builder.Server <- host
-    return (System.Text.RegularExpressions.Regex.Replace(dotEnvFile.Name, @"/^\.env\./", ""), builder.ToString())
+    let connString: string = buildConnectionString user password host dict["DB_NAME"]
+    let envName: string = Regex.replace @"/^\.env\./" "" dotEnvFile.Name
+    return (envName, connString)
   }
 
 let prepareManyConnectionStringsAsync (dotEnvFiles: System.IO.FileSystemInfo list) =
   async {
     // Load values that we don't derive from per DotEnv file. Do this prior to
     // splitting up work.
-    let lines: string list =
-      optionFiles |> List.map readFileLinesIntoList |> List.concat
-
-    let userOpt: string option = tryFirstMatch @"^user=(\w+)$" lines
-    let passwordOpt: string option = tryFirstMatchOfList passwordPatterns lines
-
-    let host: string =
-      match Environment.getEnvironmentVariableOpt "DB_HOST" with
-      | Some(string) -> string
-      | None -> "127.0.0.1"
-
-    let (user, password) =
-      match (userOpt, passwordOpt) with
-      | (Some(user), Some(password)) -> (user, password)
-      | (None, None) -> failwith "Unable to extract MySQL username or password"
-      | (None, _) -> failwith "Unable to extract MySQL username"
-      | (_, None) -> failwith "Unable to extract MySQL password"
+    let (user: string, password: string, host: string) =
+      match getUserPasswordHost () with
+      | Ok(user, password, host) -> (user, password, host)
+      | Error(reason) -> failwith reason
 
     let prepareConnString = prepareSingleConnectionStringAsync user password host
 

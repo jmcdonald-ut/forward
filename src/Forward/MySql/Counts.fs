@@ -22,9 +22,23 @@ type Table =
 let informationSchemaTablesTable: QuerySource<Table> =
   table'<Table> "information_schema.tables"
 
-let allTableCountsTask (conn: ConnectionWithConfig) =
-  task {
-    let schema: string = conn.Config.DbName
+let revisedAllTableCountsTask (commandContext: FileCommandContext) =
+  async {
+    let (user, password, host) =
+      match getUserPasswordHost () with
+      | Ok(user, password, host) -> (user, password, host)
+      | Error(reason) -> failwith reason
+
+    let envFileInfo: System.IO.FileSystemInfo =
+      match Forward.FileHelpers.actualPathToCurrentEnv commandContext with
+      | Ok(fileInfo) -> fileInfo
+      | Error(reason) -> failwith reason
+
+    let! (content: IDictionary<string, string>) = Forward.Project.readDotEnvAsync envFileInfo.FullName
+    let! (_, connectionString: string) = prepareSingleConnectionStringAsync user password host envFileInfo
+    let schema: string = content["DB_NAME"]
+
+    use conn: MySql.Data.MySqlClient.MySqlConnection = buildConnection connectionString
 
     let! (rawTableCounts: IEnumerable<Table>) =
       select {
@@ -32,11 +46,12 @@ let allTableCountsTask (conn: ConnectionWithConfig) =
           where (t.table_schema = schema)
           orderByDescending t.table_rows
       }
-      |> conn.Conn.SelectAsync<Table>
+      |> conn.SelectAsync<Table>
+      |> Async.AwaitTask
 
     return
       rawTableCounts
-      |> Seq.cast<Table>
+      |> Seq.toList
       |> Seq.map (fun (t: Table) ->
         { TableName = t.table_name
           Count = t.table_rows })
@@ -68,9 +83,7 @@ let fetchTableCountAsync (conn: MySql.Data.MySqlClient.MySqlConnection) (tableNa
 /// file/project.
 let collectDotEnvTableCountsTask (tables: string list) ((dotEnvName, connString): (string * string)) =
   async {
-    use conn: MySql.Data.MySqlClient.MySqlConnection =
-      new MySql.Data.MySqlClient.MySqlConnection(connString)
-
+    use conn: MySql.Data.MySqlClient.MySqlConnection = buildConnection connString
     let! _ = conn.OpenAsync() |> Async.AwaitTask
     let! (rawTableCounts: CountEntry array) = tables |> List.map (fetchTableCountAsync conn) |> Async.Sequential
 

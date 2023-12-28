@@ -1,11 +1,14 @@
 module Regex
 
-let regexMatch (pattern: string) (input: string) =
-  System.Text.RegularExpressions.Regex.Match(input, pattern)
+open System.Text
 
-let isMatch (pattern: string) (input: string) =
-  let result = regexMatch pattern input
-  result.Success
+let regexMatch (pattern: string) (input: string) =
+  RegularExpressions.Regex.Match(input, pattern)
+
+let isMatch (pattern: string) (input: string) = (regexMatch pattern input).Success
+
+let replace (pattern: string) (replacement: string) (input: string) =
+  RegularExpressions.Regex.Replace(input, pattern, replacement)
 
 [<TailCall>]
 let rec anyMatch (patterns: string list) (input: string) =
@@ -14,8 +17,8 @@ let rec anyMatch (patterns: string list) (input: string) =
   | pattern :: remaining -> (isMatch pattern input) || (anyMatch remaining input)
 
 let testTryGetNGroupMatch (pattern: string) (input: string) (n: int) =
-  let result: System.Text.RegularExpressions.Match =
-    System.Text.RegularExpressions.Regex.Match(input, pattern)
+  let result: RegularExpressions.Match =
+    RegularExpressions.Regex.Match(input, pattern)
 
   match result.Groups.Count with
   | i when i >= n + 1 -> Some result.Groups[n].Value
