@@ -8,7 +8,7 @@
     <Compile Include="FileHelpers.fs" />
     <Compile Include="Processes.fs" />
     <Compile Include="Project.fs" />
-    <Compile Include="Helpers/MySqlHelpers.fs" />
+    <Compile Include="MySql/Backups.fs" />
     <Compile Include="MySql/Connection.fs" />
     <Compile Include="MySql/Counts.fs" />
   </ItemGroup>

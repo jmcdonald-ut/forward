@@ -1,4 +1,4 @@
-module Forward.Helpers.MySqlHelpers
+module Forward.MySql.Backups
 
 open Forward
 open Forward.Processes

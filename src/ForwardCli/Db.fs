@@ -5,7 +5,7 @@ open dotenv.net
 open Spectre.Console
 
 open Forward
-open Forward.Helpers
+open Forward.MySql
 open ForwardCli.OutputResult
 
 // Internal "counts" type. This is useful for coercing the output of different
@@ -29,7 +29,7 @@ type DbTableCountsArgs =
       match arg with
       | Tables _ -> "list of tables to compare per env; omit to print all from current env"
 
-type DbCommandFun = CommandContext.FileCommandContext -> string -> Result<MySqlHelpers.BackupContext, string>
+type DbCommandFun = CommandContext.FileCommandContext -> string -> Result<Backups.BackupContext, string>
 
 // SUBCOMMANDS
 //   fwd backup
@@ -62,9 +62,9 @@ let doDbCommand (dbCommand: DbCommandFun) (cmdCtxt: CommandContext.FileCommandCo
   |> Result.bind (dbCommand cmdCtxt)
   |> OutputResult.recordResultOf
 
-let handleBackupCommand = doDbCommand MySqlHelpers.backupDb
+let handleBackupCommand = doDbCommand Backups.backupDb
 
-let handleRestoreCommand = doDbCommand MySqlHelpers.restoreDb
+let handleRestoreCommand = doDbCommand Backups.restoreDb
 
 let private runCountsCommand (columns: string array) (bindResult: ('t) -> Counts list) (asyncCommand: Async<'t>) =
   let folder (table: Table) (item: Counts) =
