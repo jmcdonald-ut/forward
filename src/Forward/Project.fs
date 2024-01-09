@@ -1,11 +1,71 @@
 module Forward.Project
 
 open dotenv.net
+open System.IO
+
+type ListDirection =
+  | Asc
+  | Desc
+
+type ListColumn =
+  | Name
+  | Created
+  | Updated
+  | Accessed
+
+type ListOrder = ListColumn * ListDirection
+
+type ListArgs =
+  { Column: ListColumn
+    Direction: ListDirection
+    Limit: int }
+
+type ListEntry =
+  { Name: string
+    FullName: string
+    IsCurrent: bool
+    CreationTime: System.DateTime
+    LastAccessTime: System.DateTime
+    LastWriteTime: System.DateTime }
+
+/// Maps a FileSystemInfo object into a ListEntry based on the current command
+/// context; the ListEntry is a subset of interesting fields *plus* a flag
+/// indicating whether the file is the current env.
+let asDotEnv (context: CommandContext.FileCommandContext) (info: FileSystemInfo) =
+  { ListEntry.Name = (File.fileName info.Name).Replace(".env.", "")
+    ListEntry.FullName = info.FullName
+    ListEntry.IsCurrent = FileHelpers.isCurrentEnvByPath context info.FullName
+    ListEntry.CreationTime = info.CreationTime
+    ListEntry.LastAccessTime = info.LastAccessTime
+    ListEntry.LastWriteTime = info.LastWriteTime }
+
+/// Makes a "comparer" function which returns an integer indicating the order of
+/// the left hand side relative to the right hand side.
+let makeCompareFun (colDir: ListOrder) =
+  let (column, direction) = colDir
+  let flip = fun func (lhs: 'b) (rhs: 'a) -> func rhs lhs
+
+  let colFunc =
+    match column with
+    | Created -> (fun (l: ListEntry) (r: ListEntry) -> compare l.CreationTime r.CreationTime)
+    | Updated -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastWriteTime r.LastWriteTime)
+    | Accessed -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastAccessTime r.LastAccessTime)
+    | Name -> (fun (l: ListEntry) (r: ListEntry) -> compare l.Name r.Name)
+
+  match direction with
+  | Asc -> colFunc
+  | Desc -> flip colFunc
 
 let listDotEnvs (commandContext: CommandContext.FileCommandContext) =
+  let comparer = makeCompareFun (Updated, Desc)
+
+  let lift (fn: (ListEntry) -> (ListEntry) -> 'a) (lhs: FileSystemInfo) (rhs: FileSystemInfo) =
+    fn (asDotEnv commandContext lhs) (asDotEnv commandContext rhs)
+
   [ "dotenvs" ]
   |> FileHelpers.projectPathTo commandContext
   |> File.directoryFileInfos
+  |> List.sortWith (lift comparer)
 
 let loadCurrentDotEnv (commandContext: CommandContext.FileCommandContext) =
   match FileHelpers.actualPathToCurrentEnv commandContext with
@@ -64,29 +124,6 @@ let init (commandContext: CommandContext.FileCommandContext) : Result<string, st
   |> Result.bind createInternalSymLink
   |> Result.bind createSymLinkInProject
 
-type ListDirection =
-  | Asc
-  | Desc
-
-type ListColumn =
-  | Name
-  | Created
-  | Updated
-  | Accessed
-
-type ListArgs =
-  { Column: ListColumn
-    Direction: ListDirection
-    Limit: int }
-
-type ListEntry =
-  { Name: string
-    FullName: string
-    IsCurrent: bool
-    CreationTime: System.DateTime
-    LastAccessTime: System.DateTime
-    LastWriteTime: System.DateTime }
-
 let buildListArgs (limit: int) (sortColString: string) (sortDirString: string) : ListArgs =
   let sortDir: ListDirection =
     match sortDirString.ToLower() with
@@ -107,37 +144,16 @@ let buildListArgs (limit: int) (sortColString: string) (sortDirString: string) :
 /// Lists dotenv files for the forward operating base with support for sorting.
 /// The "current" dotenv is highlighted.
 let list (commandContext: CommandContext.FileCommandContext) (listParams: ListArgs) =
-  let flip = fun func (lhs: 'b) (rhs: 'a) -> func rhs lhs
-
-  let colFunc =
-    match listParams.Column with
-    | Created -> (fun (l: ListEntry) (r: ListEntry) -> compare l.CreationTime r.CreationTime)
-    | Updated -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastWriteTime r.LastWriteTime)
-    | Accessed -> (fun (l: ListEntry) (r: ListEntry) -> compare l.LastAccessTime r.LastAccessTime)
-    | Name -> (fun (l: ListEntry) (r: ListEntry) -> compare l.Name r.Name)
-
-  let comparer =
-    match listParams.Direction with
-    | Asc -> colFunc
-    | Desc -> flip colFunc
-
-  let asDotenv (context: CommandContext.FileCommandContext) (info: System.IO.FileSystemInfo) =
-    { ListEntry.Name = (File.fileName info.Name).Replace(".env.", "")
-      ListEntry.FullName = info.FullName
-      ListEntry.IsCurrent = FileHelpers.isCurrentEnvByPath context info.FullName
-      ListEntry.CreationTime = info.CreationTime
-      ListEntry.LastAccessTime = info.LastAccessTime
-      ListEntry.LastWriteTime = info.LastWriteTime }
-
   try
-    let fileList: System.IO.FileSystemInfo list = listDotEnvs commandContext
+    let fileList: FileSystemInfo list = listDotEnvs commandContext
+    let comparer = makeCompareFun (listParams.Column, listParams.Direction)
 
     fileList
-    |> List.map (asDotenv commandContext)
+    |> List.map (asDotEnv commandContext)
     |> List.sortWith comparer
     |> List.take (Math.clamp 0 fileList.Length listParams.Limit)
     |> Ok
-  with :? System.IO.DirectoryNotFoundException ->
+  with :? DirectoryNotFoundException ->
     Error(sprintf "Project `%s` not found; run fwd init or provide a project name." commandContext.ProjectName)
 
 type SwitchMode =
