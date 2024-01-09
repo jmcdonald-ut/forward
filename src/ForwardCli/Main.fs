@@ -14,7 +14,7 @@ open ForwardCli.Switch
 type RootArgs =
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Explain
-  | [<SubCommand; CliPrefix(CliPrefix.None)>] Config of ParseResults<ConfigArgs>
+  | [<SubCommand; CliPrefix(CliPrefix.None); AltCommandLine("c")>] Config of ParseResults<ConfigArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Counts of ParseResults<DbTableCountsArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup of ParseResults<DbArgs>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup_All
@@ -98,7 +98,7 @@ let routeCommand
   match rootArgs.TryGetSubCommand() with
   | Some(Backup(args)) -> args |> handleBackupCommand context |> doPrintAndExit
   | Some(Backup_All) -> context |> handleBackupAllCommand |> doPrintAndExit
-  | Some(Config(args)) -> args |> handleConfigCommand context |> doPrintAndExit
+  | Some(Config(args)) -> handleConfigCommand context format squelchError args
   | Some(Explain) -> context |> handleExplainCommand |> doPrintAndExit
   | Some(Counts(args)) -> args |> handleOtherCountsCommand context |> doPrintAndExit
   | Some(Init) -> context |> handleInitCommand |> doPrintAndExit
