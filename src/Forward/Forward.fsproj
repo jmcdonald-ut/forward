@@ -7,6 +7,7 @@
     <Compile Include="CommandContext.fs" />
     <Compile Include="FileHelpers.fs" />
     <Compile Include="Processes.fs" />
+    <Compile Include="ProjectEnv.fs" />
     <Compile Include="Project.fs" />
     <Compile Include="MySql/Backups.fs" />
     <Compile Include="MySql/Connection.fs" />
