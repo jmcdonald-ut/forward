@@ -4,47 +4,42 @@ open NUnit.Framework
 open System.IO
 
 open Forward.Project
+open Forward.Tests.LibTest.TempEnvSetUp
 
 [<TestFixture>]
 type Tests() =
-  let mutable forwardRoot: DirectoryInfo = null
-  let mutable projectsRoot: DirectoryInfo = null
-  let mutable projectRoot: DirectoryInfo = null
-  let mutable priorRoot: string = null
-  let mutable priorProjectName: string = null
+  [<DefaultValue>]
+  val mutable tempTestEnv: TempTestEnv
 
   [<OneTimeSetUp>]
   member this.setUpTestDirs() =
-    forwardRoot <- Directory.CreateTempSubdirectory("fwd_root")
-    projectsRoot <- Directory.CreateTempSubdirectory("fwd_projects")
-    projectRoot <- Directory.CreateTempSubdirectory(prefix = "fwd_codebase")
-
-    priorRoot <- Environment.getEnvironmentVariable "FORWARD_ROOT_PATH"
-    priorProjectName <- Environment.getEnvironmentVariable "FORWARD_PROJECT_NAME"
-
-    Environment.setEnvironmentVariable "FORWARD_ROOT_PATH" forwardRoot.FullName
-    Environment.setEnvironmentVariable "FORWARD_PROJECT_NAME" projectRoot.Name
+    this.tempTestEnv <- new TempTestEnv()
+    this.tempTestEnv.CreateDotEnv(".env.a", "FILE=A")
+    this.tempTestEnv.CreateDotEnv(".env.b", "FILE=B")
+    this.tempTestEnv.CreateDotEnv(".env.c", "FILE=C")
 
   [<OneTimeTearDown>]
-  member this.tearDownTestDirs() =
-    Directory.Delete(forwardRoot.FullName, true)
-    Directory.Delete(projectsRoot.FullName, true)
-    Directory.Delete(projectRoot.FullName, true)
-
-    Environment.setEnvironmentVariable "FORWARD_ROOT_PATH" priorRoot
-    Environment.setEnvironmentVariable "FORWARD_PROJECT_NAME" priorProjectName
+  member this.tearDownTestDirs() = this.tempTestEnv.TearDown()
 
   [<Test>]
   member this.testInitIsolated() =
     let context: Forward.CommandContext.FileCommandContext =
-      { ProjectName = "testInitIsolated"
-        ProjectArtifactsPath = Path.Join([| projectsRoot.FullName; "testInitIsolated" |])
-        RootPath = forwardRoot.FullName
-        ProjectPath = projectRoot.FullName }
+      this.tempTestEnv.CommandContext()
 
-    let expectedPath: string = File.combinePaths projectRoot.FullName ".env"
+    let expectedPath: string =
+      File.combinePaths this.tempTestEnv.ProjectRoot.FullName ".env"
 
     let expected: string = sprintf "`%s` symlink created" expectedPath
     let actual: string = context |> init |> Result.defaultValue "FAIL"
+
+    Assert.That(actual, Is.EqualTo(expected))
+
+  [<Test>]
+  member this.testBasicUsageOfListDotEnvs() =
+    let commandContext: Forward.CommandContext.FileCommandContext =
+      this.tempTestEnv.CommandContext()
+
+    let actual: string list = commandContext |> listDotEnvs |> List.map _.Name
+    let expected: string list = [ ".env.c"; ".env.b"; ".env.a" ]
 
     Assert.That(actual, Is.EqualTo(expected))

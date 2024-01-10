@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="LibTest/AssertionExtensions.fs" />
+    <Compile Include="LibTest/TempEnvSetUp.fs" />
     <Compile Include="Prelude/EnvironmentTests.fs" />
     <Compile Include="Prelude/FileTests.fs" />
     <Compile Include="Prelude/RegexTests.fs" />
