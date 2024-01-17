@@ -14,6 +14,7 @@
     <Compile Include="Forward/CommandContextTests.fs" />
     <Compile Include="Forward/ProjectTests/TestInit.fs" />
     <Compile Include="Forward/ProjectTests/TestList.fs" />
+    <Compile Include="Forward/ProjectTests/TestSwitchingToExistingDotEnv.fs" />
     <Compile Include="Forward/ProjectTests/TestSwitchingToNewDotEnv.fs" />
     <Compile Include="Forward/FileHelpersTests.fs" />
     <Compile Include="Forward/MySql/ConnectionTests.fs" />
