@@ -12,13 +12,10 @@ open ForwardCli.Switch
 
 [<RequireSubcommand>]
 type RootArgs =
+  | [<SubCommand; CliPrefix(CliPrefix.None)>] Db of ParseResults<DbCommand>
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Init
   | [<SubCommand; CliPrefix(CliPrefix.None)>] Explain
   | [<SubCommand; CliPrefix(CliPrefix.None); AltCommandLine("c")>] Config of ParseResults<ConfigArgs>
-  | [<SubCommand; CliPrefix(CliPrefix.None)>] Counts of ParseResults<DbTableCountsArgs>
-  | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup of ParseResults<DbArgs>
-  | [<SubCommand; CliPrefix(CliPrefix.None)>] Backup_All
-  | [<SubCommand; CliPrefix(CliPrefix.None)>] Restore of ParseResults<DbArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("ls")>] List of ParseResults<ListArgs>
   | [<CliPrefix(CliPrefix.None); CustomCommandLine("rm")>] Remove of ParseResults<RemoveArgs>
   | [<CliPrefix(CliPrefix.None); AltCommandLine("s")>] Switch of ParseResults<SwitchArgs>
@@ -31,15 +28,12 @@ type RootArgs =
   interface IArgParserTemplate with
     member arg.Usage =
       match arg with
-      | Backup _ -> "backs up a DB."
-      | Backup_All -> "backs up all DBs."
       | Config _ -> "gets or sets variables in dotenv file."
-      | Counts _ -> "gets other table counts"
+      | Db _ -> "backup, restore, or compare DBs in dotenv files."
       | Explain -> "explains the current context."
       | Init -> "initialize a project."
       | List _ -> "list project dotenv files."
       | Remove _ -> "remove project dotenv file."
-      | Restore _ -> "restores a DB backup."
       | Switch _ -> "switch the project's dotenv file."
       // Shared/Root CLI Args
       | Project _ -> "specify the project name."
@@ -96,15 +90,12 @@ let routeCommand
     fun (result: CommandResult<'row>) -> printAndExit format squelchError result
 
   match rootArgs.TryGetSubCommand() with
-  | Some(Backup(args)) -> args |> handleBackupCommand context |> doPrintAndExit
-  | Some(Backup_All) -> context |> handleBackupAllCommand |> doPrintAndExit
   | Some(Config(args)) -> handleConfigCommand context format squelchError args
+  | Some(Db(args)) -> handleDbCommand context args format squelchError
   | Some(Explain) -> context |> handleExplainCommand |> doPrintAndExit
-  | Some(Counts(args)) -> args |> handleOtherCountsCommand context |> doPrintAndExit
   | Some(Init) -> context |> handleInitCommand |> doPrintAndExit
   | Some(List(args)) -> args |> handleListCommand context |> doPrintAndExit
   | Some(Remove(args)) -> args |> handleRemoveCommand context |> doPrintAndExit
-  | Some(Restore(args)) -> args |> handleRestoreCommand context |> doPrintAndExit
   | Some(Switch(args)) -> args |> handleSwitchCommand context |> doPrintAndExit
   | _ -> failWith rootArgs "Got invalid subcommand %O" format
 

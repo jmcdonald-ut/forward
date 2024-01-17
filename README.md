@@ -8,13 +8,10 @@ USAGE: fwd [--help] [--project <string>] [--project-path <string>] [--root <stri
 
 SUBCOMMANDS:
 
+    db <options>          backup, restore, or compare DBs in dotenv files.
     init                  initialize a project.
     explain               explains the current context.
     config, c <options>   gets or sets variables in dotenv file.
-    counts <options>      gets other table counts
-    backup <options>      backs up a DB.
-    backup-all            backs up all DBs.
-    restore <options>     restores a DB backup.
     list, ls <options>    list project dotenv files.
     rm <options>          remove project dotenv file.
     switch, s <options>   switch the project's dotenv file.
