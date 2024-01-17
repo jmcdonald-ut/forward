@@ -67,11 +67,6 @@ let listDotEnvs (commandContext: CommandContext.FileCommandContext) =
   |> File.directoryFileInfos
   |> List.sortWith (lift comparer)
 
-let loadCurrentDotEnv (commandContext: CommandContext.FileCommandContext) =
-  match FileHelpers.actualPathToCurrentEnv commandContext with
-  | Ok(path: System.IO.FileSystemInfo) -> DotEnv.Load(new DotEnvOptions(envFilePaths = [ path.FullName ]))
-  | Error(_) -> ()
-
 let readDotEnvAsync (filePath: string) =
   async {
     let options: DotEnvOptions = new DotEnvOptions(envFilePaths = [ filePath ])
@@ -81,48 +76,38 @@ let readDotEnvAsync (filePath: string) =
 /// Initializes a new project if one does't already exist. If one does exist,
 /// this re-runs the init logic in a non-destructive manner.
 let init (commandContext: CommandContext.FileCommandContext) : Result<string, string> =
-  let createDirectory _ =
-    commandContext.ProjectArtifactsPath
-    |> FileHelpers.whenFileOrDirectoryIsMissing (fun (path: string) ->
-      Ok(sprintf "`%s` created" (File.createDirectory path).FullName))
+  // <codebase>/.env → <artifacts>/.env.current → <artifacts>/dotenvs/.env.main
+  let artifactsPath: string = commandContext.ProjectArtifactsPath
+  let fwdLinkPath: string = File.combinePaths artifactsPath ".env.current"
+  let dotEnvsPath: string = File.combinePaths artifactsPath "dotenvs"
+  let mainDotEnvPath: string = File.combinePaths dotEnvsPath ".env.main"
+  let projectDotEnvPath: string = File.combinePaths commandContext.ProjectPath ".env"
 
-  let createDotEnvsDirectory _ =
-    "dotenvs"
-    |> File.combinePaths commandContext.ProjectArtifactsPath
-    |> FileHelpers.whenFileOrDirectoryIsMissing (fun (fullPath: string) ->
-      Ok(sprintf "`%s` created" (File.createDirectory fullPath).FullName))
+  let createDirectoryIfMissing (path: string) =
+    FileHelpers.whenFileOrDirectoryIsMissing
+      (fun _ -> Ok(sprintf "`%s` created" (File.createDirectory path).FullName))
+      path
 
-  let createDotEnv _ =
-    ".env.main"
-    |> File.combinePaths3 commandContext.ProjectArtifactsPath "dotenvs"
-    |> FileHelpers.whenFileOrDirectoryIsMissing (fun (fullPath: string) ->
-      // TODO: Copy .env if possible.
-      use stream: System.IO.StreamWriter = System.IO.File.CreateText fullPath
-      stream.WriteLine("# Generated .env")
-      Ok(sprintf "`%s` created" fullPath))
-
-  let createInternalSymLink _ =
-    let targetPath: string =
-      FileHelpers.projectPathTo commandContext [ "dotenvs"; ".env.main" ]
-
-    [ ".env.current" ]
-    |> FileHelpers.projectPathTo commandContext
+  let createSymLinkIfMissing (targetPath: string) (linkPath: string) =
+    linkPath
     |> FileHelpers.createSymbolicLinkIfMissing targetPath
-    |> Result.bind (fun (fileInfo: System.IO.FileSystemInfo) -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
+    |> Result.bind (fun (fileInfo: FileSystemInfo) -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
 
-  let createSymLinkInProject _ =
-    let path: string = File.combinePaths commandContext.ProjectPath ".env"
-    let targetPath: string = FileHelpers.projectPathTo commandContext [ ".env.current" ]
+  let createDotEnv (path: string) =
+    // TODO: Copy .env if possible.
+    use stream: StreamWriter = File.CreateText path
+    stream.WriteLine("# Generated .env")
+    Ok(sprintf "`%s` created" path)
 
-    FileHelpers.createSymbolicLinkIfMissing path targetPath
-    |> Result.bind (fun (fileInfo: System.IO.FileSystemInfo) -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
+  let createDotEnvIfMissing (path: string) =
+    FileHelpers.whenFileOrDirectoryIsMissing createDotEnv path
 
   commandContext.ProjectArtifactsPath
-  |> createDirectory
-  |> Result.bind createDotEnvsDirectory
-  |> Result.bind createDotEnv
-  |> Result.bind createInternalSymLink
-  |> Result.bind createSymLinkInProject
+  |> createDirectoryIfMissing
+  |> Result.bind (fun _ -> createDirectoryIfMissing dotEnvsPath)
+  |> Result.bind (fun _ -> createDotEnvIfMissing mainDotEnvPath)
+  |> Result.bind (fun _ -> createSymLinkIfMissing fwdLinkPath mainDotEnvPath)
+  |> Result.bind (fun _ -> createSymLinkIfMissing projectDotEnvPath fwdLinkPath)
 
 let buildListArgs (limit: int) (sortColString: string) (sortDirString: string) : ListArgs =
   let sortDir: ListDirection =
@@ -212,17 +197,9 @@ let explain (commandContext: CommandContext.FileCommandContext) : Result<Command
   let getDotEnvPath = FileHelpers.actualPathToCurrentEnv >> Result.map (_.FullName)
   let dotEnvPath: string option = commandContext |> getDotEnvPath |> Result.toOption
 
-  let maybePathToSymLink: string =
-    FileHelpers.projectPathTo commandContext [ ".env.current" ]
-
-  let pathToSymLink: string option =
-    match File.exists maybePathToSymLink with
-    | true -> Some maybePathToSymLink
-    | false -> None
-
   Ok
     { RootPath = commandContext.RootPath
       ProjectName = commandContext.ProjectName
       ProjectArtifactsPath = commandContext.ProjectArtifactsPath
-      DotEnvSymLinkPath = pathToSymLink
+      DotEnvSymLinkPath = FileHelpers.tryProjectPathTo commandContext [ ".env.current" ]
       DotEnvPath = dotEnvPath }

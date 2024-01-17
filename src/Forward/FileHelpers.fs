@@ -13,6 +13,14 @@ let getRootPathOpt = CommandContext.getRootPathOpt
 let projectPathTo (context: CommandContext.FileCommandContext) (parts: string list) =
   context.ProjectArtifactsPath :: parts |> List.toArray |> System.IO.Path.Join
 
+/// Returns path as an option predicated upon the file's existence.
+let tryProjectPathTo (context: CommandContext.FileCommandContext) (parts: string list) =
+  let path = projectPathTo context parts
+
+  match File.exists path with
+  | true -> Some path
+  | false -> None
+
 /// Returns a full path to the dotenv file.
 let dotenvPath (context: CommandContext.FileCommandContext) (name: string) =
   projectPathTo context [ "dotenvs"; ".env." + name ]
