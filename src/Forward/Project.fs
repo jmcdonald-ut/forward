@@ -209,21 +209,20 @@ let remove (commandContext: CommandContext.FileCommandContext) (dotEnvName: stri
   | (true, _) -> File.deleteFile fullPath
 
 let explain (commandContext: CommandContext.FileCommandContext) : Result<CommandContext.DotEnvCommandContext, string> =
-  let maybePathToSymLink = FileHelpers.projectPathTo commandContext [ ".env.current" ]
+  let getDotEnvPath = FileHelpers.actualPathToCurrentEnv >> Result.map (_.FullName)
+  let dotEnvPath: string option = commandContext |> getDotEnvPath |> Result.toOption
 
-  let pathToSymLink =
+  let maybePathToSymLink: string =
+    FileHelpers.projectPathTo commandContext [ ".env.current" ]
+
+  let pathToSymLink: string option =
     match File.exists maybePathToSymLink with
     | true -> Some maybePathToSymLink
     | false -> None
-
-  let actualPathToCurrentDotEnv =
-    match FileHelpers.actualPathToCurrentEnv commandContext with
-    | Ok path -> Some path.FullName
-    | Error _ -> None
 
   Ok
     { RootPath = commandContext.RootPath
       ProjectName = commandContext.ProjectName
       ProjectArtifactsPath = commandContext.ProjectArtifactsPath
       DotEnvSymLinkPath = pathToSymLink
-      DotEnvPath = actualPathToCurrentDotEnv }
+      DotEnvPath = dotEnvPath }

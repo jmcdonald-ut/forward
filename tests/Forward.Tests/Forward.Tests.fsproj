@@ -12,6 +12,7 @@
     <Compile Include="Prelude/FileTests.fs" />
     <Compile Include="Prelude/RegexTests.fs" />
     <Compile Include="Forward/CommandContextTests.fs" />
+    <Compile Include="Forward/ProjectTests/TestExplainingCommandContext.fs" />
     <Compile Include="Forward/ProjectTests/TestInit.fs" />
     <Compile Include="Forward/ProjectTests/TestList.fs" />
     <Compile Include="Forward/ProjectTests/TestSwitchingToExistingDotEnv.fs" />
