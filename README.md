@@ -2,56 +2,35 @@
 
 Forward is a personal command line tool to help with dev work. This is my first F# project, and I'm using it as a springboard to learn the language.
 
-```sh
-# Initialize a Forward project. This will create or replace
-# `.env` with a symlink to the "active" `.env` file now
-# managed by Forward.
-fwd init
+```
+USAGE: fwd [--help] [--project <string>] [--project-path <string>] [--root <string>] [--squelch] [--format <standard|json>]
+           <subcommand> [<options>]
 
-# Use --help for the top-level command or any subcommands
-# to get more info.
-fwd --help
-fwd ls --help
+SUBCOMMANDS:
 
-# Explain the context used by Forward commands. Here's a
-# brief explanation of each key in the output.
-#
-# RootPath: Holds all Forward projects.
-# ProjectName: Name of the active Forward project.
-# ProjectArtifactsPath: Path to Forward's project artifacts.
-# DotEnvSymLinkPath: .env in the codebase points to this.
-# DotEnvPath: Complete path to active .env
-#
-# Note that DotEnvSymLinkPath is itself a link.
-#
-#   ~/rails/.env
-#   -> ~/.forward/rails/.env.current
-#   -> ~/.forward/rails/dotenvs/.env.development.fresh
-fwd explain
-#=> { RootPath = "/Users/jon/.forward"
-#=>   ProjectName = "rails"
-#=>   ProjectArtifactsPath = "/Users/jon/.forward/rails"
-#=>   DotEnvSymLinkPath = Some "/Users/jon/.forward/rails/.env.current"
-#=>   DotEnvPath = Some "/Users/jon/.forward/rails/dotenvs/.env.development.fresh" }
+    init                  initialize a project.
+    explain               explains the current context.
+    config, c <options>   gets or sets variables in dotenv file.
+    counts <options>      gets other table counts
+    backup <options>      backs up a DB.
+    backup-all            backs up all DBs.
+    restore <options>     restores a DB backup.
+    list, ls <options>    list project dotenv files.
+    rm <options>          remove project dotenv file.
+    switch, s <options>   switch the project's dotenv file.
 
-# Switch out the .env file used in the current project.
-# Pass `-b` to create a new .env file and switch to it.
-fwd s -b lots-of-data
-fwd s main
+    Use 'fwd <subcommand> --help' for additional information.
 
-# View a list of available .env files
-fwd ls
+OPTIONS:
 
-# Remove a .env file that's no longer needed.
-fwd rm lots-of-data
-
-# Get the value of an environment variable (taking into
-# consideration the current .env file)
-fwd config get db_name
-
-# Backup or restore a MySQL DB based on the current .env.
-fwd backup
-fwd restore
+    --project <string>    specify the project name.
+    --project-path <string>
+                          specify the project's directory.
+    --root <string>       specify the path to `fwd` artifacts.
+    --squelch             squelch errors
+    --format <standard|json>
+                          format
+    --help                display this list of options.
 ```
 
 ## Setup / Build / Release
@@ -106,9 +85,10 @@ Here's a rundown of the layout:
 ├── ...
 ├── src
 │   ├── Forward       # Primary code for app/biz logic.
-│   └── ForwardCli    # Command line interface code for Forward.
+│   ├── ForwardCli    # Command line interface code for Forward.
+│   └── Prelude       # Support for base functions and types.
 └── tests
-    └── Forward.Tests # Holds tests for src/Forward.
+    └── Forward.Tests # Holds tests.
 ```
 
 ## Completions (zsh)
