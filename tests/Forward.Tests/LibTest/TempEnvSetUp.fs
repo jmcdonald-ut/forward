@@ -20,6 +20,14 @@ type TempTestEnv() =
     Environment.getEnvironmentVariable "FORWARD_PROJECT_NAME"
 
   do
+    let initEnvPath = File.joinPaths forwardProjectRoot.FullName ".env.init"
+    File.writeText "VAR=value" initEnvPath
+
+    let symPath =
+      ".env.current" |> File.combinePaths3 projectsRoot.FullName "fwd_codebase"
+
+    File.createSymbolicLink symPath initEnvPath |> ignore
+
     Environment.setEnvironmentVariable "FORWARD_ROOT_PATH" forwardRoot.FullName
     Environment.setEnvironmentVariable "FORWARD_PROJECT_NAME" projectRoot.Name
 
@@ -36,6 +44,12 @@ type TempTestEnv() =
     Directory.Delete(this.ForwardRoot.FullName, true)
     Directory.Delete(this.ProjectsRoot.FullName, true)
     Directory.Delete(this.ProjectRoot.FullName, true)
+
+  member this.GetPathToDotEnvCurrent() =
+    File.joinPaths projectsRoot.FullName "fwd_codebase/.env.current"
+
+  member this.GetPathToDotEnv(name: string) =
+    File.joinPaths forwardProjectRoot.FullName (sprintf ".env.%s" name)
 
   member this.CreateDotEnv(name: string, contents: string) =
     File.writeText contents (File.joinPaths forwardProjectRoot.FullName name)

@@ -1,4 +1,4 @@
-module Forward.Tests.Forward.ProjectTests
+module Forward.Tests.Forward.ProjectTests.TestList
 
 open NUnit.Framework
 open System.IO
@@ -22,24 +22,11 @@ type Tests() =
   member this.tearDownTestDirs() = this.tempTestEnv.TearDown()
 
   [<Test>]
-  member this.testInitIsolated() =
-    let context: Forward.CommandContext.FileCommandContext =
-      this.tempTestEnv.CommandContext()
-
-    let expectedPath: string =
-      File.combinePaths this.tempTestEnv.ProjectRoot.FullName ".env"
-
-    let expected: string = sprintf "`%s` symlink created" expectedPath
-    let actual: string = context |> init |> Result.defaultValue "FAIL"
-
-    Assert.That(actual, Is.EqualTo(expected))
-
-  [<Test>]
   member this.testBasicUsageOfListDotEnvs() =
     let commandContext: Forward.CommandContext.FileCommandContext =
       this.tempTestEnv.CommandContext()
 
     let actual: string list = commandContext |> listDotEnvs |> List.map _.Name
-    let expected: string list = [ ".env.c"; ".env.b"; ".env.a" ]
+    let expected: string list = [ ".env.c"; ".env.b"; ".env.a"; ".env.init" ]
 
     Assert.That(actual, Is.EqualTo(expected))

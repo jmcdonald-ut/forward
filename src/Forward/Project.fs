@@ -178,7 +178,7 @@ let switch (commandContext: CommandContext.FileCommandContext) (name: string) (m
     System.IO.File.SetLastWriteTimeUtc(targetPath, System.DateTime.UtcNow)
 
     FileHelpers.createSymbolicLinkIfMissing currentPath targetPath
-    |> Result.bind (fun fileInfo -> Ok(sprintf "`%s` symlink created" fileInfo.FullName))
+    |> Result.bind (fun fileInfo -> Ok(sprintf "backing symlink now `%s` → `%s`" fileInfo.FullName targetPath))
 
   let createDotEnvAndReplaceInternalSymLink _ =
     let currentContent: string = System.IO.File.ReadAllText currentPath
@@ -186,11 +186,15 @@ let switch (commandContext: CommandContext.FileCommandContext) (name: string) (m
     newFile.Write(currentContent)
 
     replaceInternalSymLink ()
+    |> Result.bind (fun (msg: string) -> Ok(sprintf "created DotEnv; %s" msg))
+
+  let finalizeSuccess =
+    Result.bind (fun (msg: string) -> Ok(sprintf "Switched; %s" msg))
 
   match mode, File.exists targetPath with
   | Create, true -> Error(sprintf "Cannot create `%s`; it already exists" name)
-  | Create, false -> createDotEnvAndReplaceInternalSymLink ()
-  | ReadOnly, true -> replaceInternalSymLink ()
+  | Create, false -> createDotEnvAndReplaceInternalSymLink () |> finalizeSuccess
+  | ReadOnly, true -> replaceInternalSymLink () |> finalizeSuccess
   | ReadOnly, false -> Error(sprintf "Cannot switch to `%s`; it does not exist" name)
 
 /// Removes the dotenv file from the project.
