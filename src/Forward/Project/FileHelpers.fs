@@ -1,5 +1,7 @@
-/// Provides utility functions for working with the file system.
-module Forward.FileHelpers
+/// Provides utility functions for working with files associated with a project.
+module Forward.Project.FileHelpers
+
+open Forward
 
 // System File/Path/Environment Wrappers
 // ****************************************************************************

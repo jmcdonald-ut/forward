@@ -1,4 +1,4 @@
-module Forward.ProjectEnv
+module Forward.Project.DotEnv
 
 open dotenv.net
 

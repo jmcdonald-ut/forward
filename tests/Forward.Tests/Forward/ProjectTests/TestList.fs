@@ -1,9 +1,8 @@
-module Forward.Tests.Forward.ProjectTests.TestList
+module Forward.Tests.Tests.TestList
 
 open NUnit.Framework
-open System.IO
 
-open Forward.Project
+open Forward.Project.Utils
 open Forward.Tests.LibTest.TempEnvSetUp
 
 [<TestFixture>]

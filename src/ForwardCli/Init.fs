@@ -5,4 +5,4 @@ module ForwardCli.Init
 // ****************************************************************************
 
 let handleInitCommand (commandContext: Forward.CommandContext.FileCommandContext) =
-  commandContext |> Forward.Project.init |> OutputResult.stringResultOf
+  commandContext |> Forward.Project.Core.init |> OutputResult.stringResultOf

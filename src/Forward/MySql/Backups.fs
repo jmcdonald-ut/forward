@@ -1,6 +1,7 @@
 module Forward.MySql.Backups
 
 open Forward
+open Forward.Project
 open Forward.Processes
 open System.Diagnostics
 
@@ -130,9 +131,9 @@ let backupAllDbsAsync (commandContext: CommandContext.FileCommandContext) =
   async {
     let! (dicts: System.Collections.Generic.IDictionary<string, string> array) =
       commandContext
-      |> Project.listDotEnvs
+      |> Project.Utils.listDotEnvs
       |> List.map _.FullName
-      |> List.map Project.readDotEnvAsync
+      |> List.map DotEnv.readDotEnvAsync
       |> Async.Parallel
 
     let collectDbName (dict: System.Collections.Generic.IDictionary<string, string>) =

@@ -2,7 +2,7 @@ module ForwardCli.Switch
 
 open Argu
 
-open Forward.Project
+open Forward.Project.Core
 
 type SwitchArgs =
   | [<MainCommand; ExactlyOnce>] Name of name: string

@@ -1,9 +1,10 @@
-module Forward.Tests.Forward.ProjectTests.TestExplainingCommandContext
+module Forward.Tests.Tests.TestExplainingCommandContext
 
 open NUnit.Framework
 
 open Forward.CommandContext
-open Forward.Project
+open Forward.Project.Core
+
 open Forward.Tests.LibTest.AssertionExtensions
 open Forward.Tests.LibTest.TempEnvSetUp
 

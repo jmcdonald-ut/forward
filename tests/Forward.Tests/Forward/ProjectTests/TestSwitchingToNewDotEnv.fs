@@ -1,8 +1,8 @@
-module Forward.Tests.Forward.ProjectTests.TestSwitchingToNewDotEnv
+module Forward.Tests.Tests.TestSwitchingToNewDotEnv
 
 open NUnit.Framework
 
-open Forward.Project
+open Forward.Project.Core
 open Forward.Tests.LibTest.AssertionExtensions
 open Forward.Tests.LibTest.TempEnvSetUp
 

@@ -5,6 +5,7 @@ open dotenv.net
 open Spectre.Console
 
 open ForwardCli.OutputResult
+open Forward.Project
 
 // SUBCOMMAND
 //   fwd config get <name>
@@ -67,7 +68,7 @@ let private extractFromEnvFileOrFallbackToSystemEnv (varName: string) (path: Sys
   | true -> StringResult(envVars[varName])
 
 let private handleGet (commandContext: Forward.CommandContext.FileCommandContext) (varName: string) =
-  match Forward.FileHelpers.actualPathToCurrentEnv commandContext with
+  match FileHelpers.actualPathToCurrentEnv commandContext with
   | Error(_) -> fallbackToSystemEnv varName
   | Ok(path) -> extractFromEnvFileOrFallbackToSystemEnv varName path
 
@@ -76,21 +77,18 @@ let private handleGetMany
   (args: ParseResults<ConfigGetManyVarArgs>)
   (varNames: string seq)
   =
-  match Forward.FileHelpers.actualPathToCurrentEnv commandContext with
+  match FileHelpers.actualPathToCurrentEnv commandContext with
   | Error(_) -> varNames |> Seq.map noneConst |> List.ofSeq |> ListResult
   | Ok(path) ->
     if args.Contains(Terse) then
-      path
-      |> Forward.ProjectEnv.getVarsOr noneConst varNames
-      |> List.ofSeq
-      |> ListResult
+      path |> DotEnv.getVarsOr noneConst varNames |> List.ofSeq |> ListResult
     else
       let folder (table: Table) (item: (string * string)) =
         let (varName, varValue) = item
         table.AddRow([| varName; varValue |])
 
       path
-      |> Forward.ProjectEnv.getVarsOr noneConst varNames
+      |> DotEnv.getVarsOr noneConst varNames
       |> Seq.zip varNames
       |> Seq.toList
       |> makeTableResult [| "Var"; "Val" |] folder
@@ -98,7 +96,7 @@ let private handleGetMany
 
 let handleCompare (commandContext) (args) (varNames: string list) =
   let columns: string array = "DotEnv" :: varNames |> Array.ofList
-  let pickValues = Forward.ProjectEnv.getVarsOr noneConst varNames
+  let pickValues = DotEnv.getVarsOr noneConst varNames
 
   let makeSingleRow (fileInfo: System.IO.FileSystemInfo) =
     let l1 = fileInfo |> pickValues |> Seq.toList
@@ -108,7 +106,7 @@ let handleCompare (commandContext) (args) (varNames: string list) =
   let folder (table: Table) (columns: string list) = columns |> Array.ofList |> table.AddRow
 
   commandContext
-  |> Forward.Project.listDotEnvs
+  |> Utils.listDotEnvs
   |> List.map makeSingleRow
   |> makeTableResult columns folder
   |> TableResult

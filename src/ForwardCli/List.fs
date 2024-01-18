@@ -5,7 +5,7 @@ open Spectre.Console
 
 open ForwardCli.OutputResult
 
-type SortDir = Forward.Project.ListDirection
+type SortDir = Forward.Project.Utils.ListDirection
 
 type SortCol =
   | [<CustomCommandLine("name")>] Name
@@ -30,7 +30,7 @@ type ListArgs =
 // SUBCOMMAND: fwd list
 // ****************************************************************************
 
-let private rowLabel (item: Forward.Project.ListEntry) =
+let private rowLabel (item: Forward.Project.Utils.ListEntry) =
   match item with
   | ({ IsCurrent = true; Name = name }) -> sprintf "[green]%s[/]" name
   | ({ Name = name }) -> sprintf "[blue]%s[/]" name
@@ -38,7 +38,7 @@ let private rowLabel (item: Forward.Project.ListEntry) =
 let private asFormattedDateTime (dateTime: System.DateTime) =
   dateTime.ToString("dd MMM yyyy @ HH:mm:ss")
 
-let private folder (table: Table) (item: Forward.Project.ListEntry) =
+let private folder (table: Table) (item: Forward.Project.Utils.ListEntry) =
   let indicator: string = if item.IsCurrent then "[green]»[/]" else ""
   let label: string = rowLabel item
   let updatedAt: string = asFormattedDateTime item.LastWriteTime
@@ -59,13 +59,13 @@ let handleListCommand (commandContext: Forward.CommandContext.FileCommandContext
     | SortDir.Desc -> "desc"
     | SortDir.Asc -> "asc"
 
-  let handleListCommandSuccess (rows: Forward.Project.ListEntry list) =
+  let handleListCommandSuccess (rows: Forward.Project.Utils.ListEntry list) =
     match listArgs.Contains(Terse) with
     | false -> TableResult(makeTableResult [| " "; "Environment"; "Last Updated" |] folder rows)
     | true -> rows |> List.map _.Name |> ListResult
 
   sortDir
-  |> Forward.Project.buildListArgs limit sortCol
-  |> Forward.Project.list commandContext
-  |> Result.map (fun (rows: Forward.Project.ListEntry list) -> handleListCommandSuccess rows)
+  |> Forward.Project.Core.buildListArgs limit sortCol
+  |> Forward.Project.Core.list commandContext
+  |> Result.map (fun (rows: Forward.Project.Utils.ListEntry list) -> handleListCommandSuccess rows)
   |> Result.defaultWith (fun (reason: string) -> ErrorResult(reason))

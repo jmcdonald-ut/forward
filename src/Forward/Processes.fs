@@ -16,16 +16,17 @@ type ExecutableProcess =
       ?redirectStandardOutput: bool,
       ?redirectStandardInput: bool
     ) =
-    let startInfo: ProcessStartInfo = new ProcessStartInfo()
-    startInfo.FileName <- executableName
-    startInfo.Arguments <- arguments
-    startInfo.UseShellExecute <- Option.defaultValue false useShellExecute
-    startInfo.RedirectStandardInput <- Option.defaultValue false redirectStandardInput
-    startInfo.RedirectStandardOutput <- Option.defaultValue false redirectStandardOutput
-    Option.iter (fun (x: string) -> startInfo.WorkingDirectory <- x) workingDirectory
+    let startInfo: ProcessStartInfo =
+      new ProcessStartInfo(
+        FileName = executableName,
+        Arguments = arguments,
+        UseShellExecute = (defaultArg useShellExecute false),
+        RedirectStandardInput = (defaultArg redirectStandardInput false),
+        RedirectStandardOutput = (defaultArg redirectStandardOutput false),
+        WorkingDirectory = (defaultArg workingDirectory "")
+      )
 
-    let executable: Process = new Process()
-    executable.StartInfo <- startInfo
+    let executable: Process = new Process(StartInfo = startInfo)
 
     { StartInfo = startInfo
       Executable = executable

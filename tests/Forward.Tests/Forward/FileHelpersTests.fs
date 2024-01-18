@@ -1,7 +1,7 @@
 module Forward.Tests.Forward.FileHelpersTests
 
 open NUnit.Framework
-open Forward.FileHelpers
+open Forward.Project.FileHelpers
 
 [<TestFixture>]
 type Tests() =

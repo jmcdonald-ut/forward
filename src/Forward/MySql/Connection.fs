@@ -1,6 +1,7 @@
 module Forward.MySql.Connection
 
 open MySql.Data.MySqlClient
+open Forward.Project
 
 type ConnectionConfig =
   { User: string
@@ -122,9 +123,7 @@ let prepareSingleConnectionStringAsync
   (dotEnvFile: System.IO.FileSystemInfo)
   =
   async {
-    let! (dict: System.Collections.Generic.IDictionary<string, string>) =
-      Forward.Project.readDotEnvAsync dotEnvFile.FullName
-
+    let! (dict: System.Collections.Generic.IDictionary<string, string>) = DotEnv.readDotEnvAsync dotEnvFile.FullName
     let connString: string = buildConnectionString user password host dict["DB_NAME"]
     let envName: string = Regex.replace @"/^\.env\./" "" dotEnvFile.Name
     return (envName, connString)

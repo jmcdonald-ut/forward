@@ -6,6 +6,7 @@ open Spectre.Console
 
 open Forward
 open Forward.MySql
+open Forward.Project
 open ForwardCli.OutputResult
 
 // Internal "counts" type. This is useful for coercing the output of different

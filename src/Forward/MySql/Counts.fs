@@ -6,6 +6,7 @@ open System.Collections.Generic
 
 open Forward.CommandContext
 open Forward.MySql.Connection
+open Forward.Project
 
 type CountEntry = { TableName: string; Count: int64 }
 
@@ -30,11 +31,11 @@ let revisedAllTableCountsTask (commandContext: FileCommandContext) =
       | Error(reason) -> failwith reason
 
     let envFileInfo: System.IO.FileSystemInfo =
-      match Forward.FileHelpers.actualPathToCurrentEnv commandContext with
+      match FileHelpers.actualPathToCurrentEnv commandContext with
       | Ok(fileInfo) -> fileInfo
       | Error(reason) -> failwith reason
 
-    let! (content: IDictionary<string, string>) = Forward.Project.readDotEnvAsync envFileInfo.FullName
+    let! (content: IDictionary<string, string>) = DotEnv.readDotEnvAsync envFileInfo.FullName
     let! (_, connectionString: string) = prepareSingleConnectionStringAsync user password host envFileInfo
     let schema: string = content["DB_NAME"]
 
@@ -106,7 +107,7 @@ let collectTableCountsPerDotEnvAsync (commandContext: FileCommandContext) (table
     // Dicts and reference them directly.
     let! (envConnStringPairs: (string * string) array) =
       commandContext
-      |> Forward.Project.listDotEnvs
+      |> Forward.Project.Utils.listDotEnvs
       |> List.filter hasDbName
       |> prepareManyConnectionStringsAsync
 
