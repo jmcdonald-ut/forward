@@ -131,9 +131,9 @@ let backupAllDbsAsync (commandContext: CommandContext.FileCommandContext) =
   async {
     let! (dicts: System.Collections.Generic.IDictionary<string, string> array) =
       commandContext
-      |> Project.Utils.listDotEnvs
-      |> List.map _.FullName
-      |> List.map DotEnv.readDotEnvAsync
+      |> Utils.listDotEnvs
+      |> Seq.map _.FullName
+      |> Seq.map DotEnv.readDotEnvAsync
       |> Async.Parallel
 
     let collectDbName (dict: System.Collections.Generic.IDictionary<string, string>) =

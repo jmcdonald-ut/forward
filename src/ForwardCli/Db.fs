@@ -168,13 +168,12 @@ let handleListTablesCommand
 
   let results =
     commandContext
-    |> MySql.Counts.revisedAllTableCountsTask
+    |> Counts.revisedAllTableCountsTask
     |> Async.RunSynchronously
-    |> Seq.toList
-    |> List.map _.TableName
+    |> Seq.map _.TableName
 
   if args.Contains(Terse) then
-    results |> ListResult |> doPrintAndExit
+    results |> SeqResult |> doPrintAndExit
   else
     results |> makeTableResult columns folder |> TableResult |> doPrintAndExit
 

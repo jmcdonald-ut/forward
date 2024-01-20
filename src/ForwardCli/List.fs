@@ -59,13 +59,13 @@ let handleListCommand (commandContext: Forward.CommandContext.FileCommandContext
     | SortDir.Desc -> "desc"
     | SortDir.Asc -> "asc"
 
-  let handleListCommandSuccess (rows: Forward.Project.Utils.ListEntry list) =
+  let handleListCommandSuccess (rows: seq<Forward.Project.Utils.ListEntry>) =
     match listArgs.Contains(Terse) with
     | false -> TableResult(makeTableResult [| " "; "Environment"; "Last Updated" |] folder rows)
-    | true -> rows |> List.map _.Name |> ListResult
+    | true -> rows |> Seq.map _.Name |> SeqResult
 
   sortDir
   |> Forward.Project.Core.buildListArgs limit sortCol
   |> Forward.Project.Core.list commandContext
-  |> Result.map (fun (rows: Forward.Project.Utils.ListEntry list) -> handleListCommandSuccess rows)
+  |> Result.map (fun (rows: seq<Forward.Project.Utils.ListEntry>) -> handleListCommandSuccess rows)
   |> Result.defaultWith (fun (reason: string) -> ErrorResult(reason))

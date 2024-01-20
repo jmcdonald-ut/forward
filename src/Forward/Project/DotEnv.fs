@@ -19,5 +19,5 @@ let tryGetVar (key: string) (dotEnvFile: System.IO.FileInfo) =
 
 /// Gets all variables; uses the result of invoking `getFallback` for any key
 /// that cannot be found.
-let getVarsOr (getFallback: (string) -> string) (keys: string seq) (dotEnvFile: System.IO.FileSystemInfo) =
+let getVarsOr (getFallback: (string) -> string) (keys: string seq) (dotEnvFile: Utils.ListEntry) =
   dotEnvFile.FullName |> readDotEnv |> Dict.propsOr getFallback keys

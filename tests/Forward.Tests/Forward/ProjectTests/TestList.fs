@@ -25,7 +25,7 @@ type Tests() =
     let commandContext: Forward.CommandContext.FileCommandContext =
       this.tempTestEnv.CommandContext()
 
-    let actual: string list = commandContext |> listDotEnvs |> List.map _.Name
-    let expected: string list = [ ".env.c"; ".env.b"; ".env.a"; ".env.init" ]
+    let actual: seq<string> = commandContext |> listDotEnvs |> Seq.map _.Name
+    let expected: seq<string> = [ "c"; "b"; "a"; "init" ]
 
     Assert.That(actual, Is.EqualTo(expected))

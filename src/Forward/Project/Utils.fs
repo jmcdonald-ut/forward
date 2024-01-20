@@ -1,9 +1,7 @@
 module Forward.Project.Utils
 
-open dotenv.net
 open System.IO
 
-open Forward
 open Forward.CommandContext
 
 type ListDirection =
@@ -55,12 +53,11 @@ let makeCompareFun (colDir: ListOrder) =
   | Desc -> flip colFunc
 
 let listDotEnvs (commandContext: FileCommandContext) =
-  let comparer = makeCompareFun (Updated, Desc)
+  seq {
+    let comparer = makeCompareFun (Updated, Desc)
+    let dotEnvsPath: string = FileHelpers.projectPathTo commandContext [ "dotenvs" ]
+    let fileInfos: FileSystemInfo seq = File.directoryFileInfos dotEnvsPath
+    let dotEnvs: seq<ListEntry> = Seq.map (asDotEnv commandContext) fileInfos
 
-  let lift (fn: (ListEntry) -> (ListEntry) -> 'a) (lhs: FileSystemInfo) (rhs: FileSystemInfo) =
-    fn (asDotEnv commandContext lhs) (asDotEnv commandContext rhs)
-
-  [ "dotenvs" ]
-  |> FileHelpers.projectPathTo commandContext
-  |> File.directoryFileInfos
-  |> List.sortWith (lift comparer)
+    yield! Seq.sortWith comparer dotEnvs
+  }

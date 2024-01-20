@@ -30,9 +30,9 @@ let revisedAllTableCountsTask (commandContext: FileCommandContext) =
       | Ok(user, password, host) -> (user, password, host)
       | Error(reason) -> failwith reason
 
-    let envFileInfo: System.IO.FileSystemInfo =
+    let envFileInfo: Utils.ListEntry =
       match FileHelpers.actualPathToCurrentEnv commandContext with
-      | Ok(fileInfo) -> fileInfo
+      | Ok(fileInfo) -> Utils.asDotEnv commandContext fileInfo
       | Error(reason) -> failwith reason
 
     let! (content: IDictionary<string, string>) = DotEnv.readDotEnvAsync envFileInfo.FullName
@@ -96,7 +96,7 @@ let collectDotEnvTableCountsTask (tables: string list) ((dotEnvName, connString)
 /// Returns a list of table counts for each dotenv which provides DB_NAME.
 let collectTableCountsPerDotEnvAsync (commandContext: FileCommandContext) (tables: string list) =
   async {
-    let hasDbName (dotEnvFile: System.IO.FileSystemInfo) =
+    let hasDbName (dotEnvFile: Utils.ListEntry) =
       let options: DotEnvOptions =
         new DotEnvOptions(envFilePaths = [ dotEnvFile.FullName ])
 
@@ -107,8 +107,8 @@ let collectTableCountsPerDotEnvAsync (commandContext: FileCommandContext) (table
     // Dicts and reference them directly.
     let! (envConnStringPairs: (string * string) array) =
       commandContext
-      |> Forward.Project.Utils.listDotEnvs
-      |> List.filter hasDbName
+      |> Utils.listDotEnvs
+      |> Seq.filter hasDbName
       |> prepareManyConnectionStringsAsync
 
     let spawnCountTask = collectDotEnvTableCountsTask tables

@@ -70,13 +70,12 @@ let buildListArgs (limit: int) (sortColString: string) (sortDirString: string) :
 /// The "current" dotenv is highlighted.
 let list (commandContext: FileCommandContext) (listParams: ListArgs) =
   try
-    let fileList: FileSystemInfo list = Utils.listDotEnvs commandContext
     let comparer = Utils.makeCompareFun (listParams.Column, listParams.Direction)
 
-    fileList
-    |> List.map (Utils.asDotEnv commandContext)
-    |> List.sortWith comparer
-    |> List.take (Math.clamp 0 fileList.Length listParams.Limit)
+    commandContext
+    |> Utils.listDotEnvs
+    |> Seq.sortWith comparer
+    |> Seq.truncate listParams.Limit
     |> Ok
   with :? DirectoryNotFoundException ->
     Error(sprintf "Project `%s` not found; run fwd init or provide a project name." commandContext.ProjectName)

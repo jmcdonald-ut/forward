@@ -78,19 +78,20 @@ let private handleGetMany
   (varNames: string seq)
   =
   match FileHelpers.actualPathToCurrentEnv commandContext with
-  | Error(_) -> varNames |> Seq.map noneConst |> List.ofSeq |> ListResult
+  | Error(_) -> varNames |> Seq.map noneConst |> SeqResult
   | Ok(path) ->
+    let dotEnv = Utils.asDotEnv commandContext path
+
     if args.Contains(Terse) then
-      path |> DotEnv.getVarsOr noneConst varNames |> List.ofSeq |> ListResult
+      dotEnv |> DotEnv.getVarsOr noneConst varNames |> SeqResult
     else
       let folder (table: Table) (item: (string * string)) =
         let (varName, varValue) = item
         table.AddRow([| varName; varValue |])
 
-      path
+      dotEnv
       |> DotEnv.getVarsOr noneConst varNames
       |> Seq.zip varNames
-      |> Seq.toList
       |> makeTableResult [| "Var"; "Val" |] folder
       |> TableResult
 
@@ -98,16 +99,15 @@ let handleCompare (commandContext) (args) (varNames: string list) =
   let columns: string array = "DotEnv" :: varNames |> Array.ofList
   let pickValues = DotEnv.getVarsOr noneConst varNames
 
-  let makeSingleRow (fileInfo: System.IO.FileSystemInfo) =
-    let l1 = fileInfo |> pickValues |> Seq.toList
-
-    fileInfo.Name :: l1
+  let makeSingleRow (entry: Utils.ListEntry) =
+    let l1: string list = entry |> pickValues |> Seq.toList
+    entry.Name :: l1
 
   let folder (table: Table) (columns: string list) = columns |> Array.ofList |> table.AddRow
 
   commandContext
   |> Utils.listDotEnvs
-  |> List.map makeSingleRow
+  |> Seq.map makeSingleRow
   |> makeTableResult columns folder
   |> TableResult
 

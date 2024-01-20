@@ -31,9 +31,9 @@ let combinePaths3 (path1: string) (path2: string) (path3: string) =
 /// Gets directory info of the given path.
 let directoryInfo (path: string) : IO.DirectoryInfo = new IO.DirectoryInfo(path)
 
-/// Gets a list of file infos at the given path.
+/// Gets a sequence of file infos at the given path.
 let directoryFileInfos (path: string) =
-  (directoryInfo path).GetFileSystemInfos() |> List.ofArray
+  seq { yield! (directoryInfo path).GetFileSystemInfos() }
 
 let joinPaths (path1: string) (path2: string) = IO.Path.Join(path1, path2)
 

@@ -116,12 +116,7 @@ let getUserPasswordHost () =
   | (None, _) -> Error("Unable to extract MySQL username")
   | (_, None) -> Error("Unable to extract MySQL password")
 
-let prepareSingleConnectionStringAsync
-  (user: string)
-  (password: string)
-  (host: string)
-  (dotEnvFile: System.IO.FileSystemInfo)
-  =
+let prepareSingleConnectionStringAsync (user: string) (password: string) (host: string) (dotEnvFile: Utils.ListEntry) =
   async {
     let! (dict: System.Collections.Generic.IDictionary<string, string>) = DotEnv.readDotEnvAsync dotEnvFile.FullName
     let connString: string = buildConnectionString user password host dict["DB_NAME"]
@@ -129,7 +124,7 @@ let prepareSingleConnectionStringAsync
     return (envName, connString)
   }
 
-let prepareManyConnectionStringsAsync (dotEnvFiles: System.IO.FileSystemInfo list) =
+let prepareManyConnectionStringsAsync (dotEnvFiles: seq<Utils.ListEntry>) =
   async {
     // Load values that we don't derive from per DotEnv file. Do this prior to
     // splitting up work.
@@ -140,5 +135,5 @@ let prepareManyConnectionStringsAsync (dotEnvFiles: System.IO.FileSystemInfo lis
 
     let prepareConnString = prepareSingleConnectionStringAsync user password host
 
-    return! dotEnvFiles |> List.map prepareConnString |> Async.Parallel
+    return! dotEnvFiles |> Seq.map prepareConnString |> Async.Parallel
   }
