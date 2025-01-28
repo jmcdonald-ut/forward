@@ -45,7 +45,7 @@ dotnet build
 
 # Release
 dotnet publish src/ForwardCli -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true
-cp src/ForwardCli/bin/Release/net8.0/osx-arm64/publish/ForwardCli [wherever]
+cp src/ForwardCli/bin/Release/net9.0/osx-arm64/publish/ForwardCli [wherever]
 ```
 
 ## Development
@@ -68,7 +68,7 @@ I don't do this as often, but [F# interactive](https://learn.microsoft.com/en-us
 
 ```
 dotnet fsi
-> #r "src/Forward/bin/Debug/net8.0/Forward.dll";;
+> #r "src/Forward/bin/Debug/net9.0/Forward.dll";;
 > open Forward;;
 > Forward.FileHelpers.getEnvironmentVariableOpt "PWD";;
 ```
