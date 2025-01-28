@@ -31,4 +31,4 @@ type Tests() =
 
     let actual = File.readFileLinesIn forwardTestFile1
 
-    Assert.That(actual, Is.EqualTo(expected))
+    Assert.That(actual, Is.EqualTo<string array>(expected))

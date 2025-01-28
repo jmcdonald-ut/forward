@@ -28,4 +28,4 @@ type Tests() =
     let actual: seq<string> = commandContext |> listDotEnvs |> Seq.map _.Name
     let expected: seq<string> = [ "c"; "b"; "a"; "init" ]
 
-    Assert.That(actual, Is.EqualTo(expected))
+    Assert.That(actual, Is.EqualTo<seq<string>>(expected))
