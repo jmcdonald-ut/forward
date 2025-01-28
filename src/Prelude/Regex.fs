@@ -14,7 +14,8 @@ let replace (pattern: string) (replacement: string) (input: string) =
 let rec anyMatch (patterns: string list) (input: string) =
   match patterns with
   | [] -> false
-  | pattern :: remaining -> (isMatch pattern input) || (anyMatch remaining input)
+  | pattern :: _ when (isMatch pattern input) -> true
+  | _ :: remaining -> (anyMatch remaining input)
 
 let testTryGetNGroupMatch (pattern: string) (input: string) (n: int) =
   let result: RegularExpressions.Match =
